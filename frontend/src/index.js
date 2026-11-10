@@ -27,9 +27,17 @@ for (const [tag, cls] of CARDS) {
 if (!customElements.get("dotmatrix-card-editor")) customElements.define("dotmatrix-card-editor", DotmatrixCardEditor);
 
 window.customCards = window.customCards || [];
-for (const [type, , name, description] of CARDS) {
+for (const [type, cls, name, description] of CARDS) {
   if (!window.customCards.some((c) => c.type === type)) {
-    window.customCards.push({ type, name, description, preview: true, documentationURL: "https://github.com/szbence7/ha-london-dotmatrix" });
+    window.customCards.push({
+      type, name, description, preview: true, documentationURL: "https://github.com/szbence7/ha-london-dotmatrix",
+      // HA 2026.6+: offered in the card picker's Community section when one of our stop sensors is picked
+      getEntitySuggestion: (hass, entityId) => {
+        const a = hass?.states?.[entityId]?.attributes;
+        if (!a?.stop_id || !Array.isArray(a.modes) || !a.modes.some((m) => cls.modes.includes(m))) return null;
+        return { config: { type: `custom:${type}`, entity: entityId } };
+      },
+    });
   }
 }
 
