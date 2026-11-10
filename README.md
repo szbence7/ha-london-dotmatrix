@@ -2,6 +2,10 @@
 
 # London Dotmatrix
 
+[![GitHub release](https://img.shields.io/github/v/release/szbence7/ha-london-dotmatrix)](https://github.com/szbence7/ha-london-dotmatrix/releases)
+[![Validate](https://github.com/szbence7/ha-london-dotmatrix/actions/workflows/validate.yml/badge.svg)](https://github.com/szbence7/ha-london-dotmatrix/actions/workflows/validate.yml)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-benceix-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/benceix)
+
 **Live London departures in Home Assistant, on dot-matrix boards that look like the real thing.**
 
 Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lines, Elizabeth line, trams, river buses and the cable car**, plus **National Rail trains from every GB operator** (Thameslink, Southern, c2c, Southeastern, GWR, …). One integration, three dashboard cards:
