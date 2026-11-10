@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTRIBUTION,
+    NR_ATTRIBUTION,
     CONF_LETTER,
     CONF_LINES,
     CONF_MAX_DEPARTURES,
@@ -55,7 +56,6 @@ class NextArrivalSensor(CoordinatorEntity[StopCoordinator], SensorEntity):
     _attr_translation_key = "next_arrival"
     _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
-    _attr_attribution = ATTRIBUTION
     # The board changes every poll: keep it out of the recorder database.
     _unrecorded_attributes = frozenset({"departures", "line_status", "lines", "messages"})
 
@@ -64,6 +64,7 @@ class NextArrivalSensor(CoordinatorEntity[StopCoordinator], SensorEntity):
         data = coordinator.subentry.data
         modes = data.get(CONF_MODES) or []
         self._attr_unique_id = f"{coordinator.stop_id}_next_arrival"
+        self._attr_attribution = NR_ATTRIBUTION if coordinator.stop_id.startswith("NR:") else ATTRIBUTION
         self._attr_icon = MODE_ICON.get(modes[0] if modes else "", "mdi:train-bus")
         letter = data.get(CONF_LETTER)
         towards = data.get(CONF_TOWARDS)

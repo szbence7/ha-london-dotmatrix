@@ -31,7 +31,11 @@ STATUS_TTL = 120  # line status (disruptions) is refreshed at most this often
 
 SUBENTRY_STOP = "stop"
 
-ATTRIBUTION = "Powered by TfL Open Data. Contains OS data © Crown copyright and database rights."
+ATTRIBUTION = (
+    "Powered by TfL Open Data. Contains OS data © Crown copyright and database rights 2016 "
+    "and Geomni UK Map data © and database rights [2019]"
+)
+NR_ATTRIBUTION = "Powered by National Rail Enquiries"
 
 # Every TfL mode that has live arrival predictions (national rail needs Darwin, not covered).
 TFL_MODES = (
