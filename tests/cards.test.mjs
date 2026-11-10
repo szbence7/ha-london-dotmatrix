@@ -58,3 +58,22 @@ test("each card only offers its own kind of stop", () => {
   assert.deepEqual(cardEntities(hass, ["bus"]), ["sensor.oxford_circus_rc"]);
   assert.deepEqual(cardEntities(hass, ["dlr", "overground", "elizabeth-line"]), ["sensor.stratford"]);
 });
+
+test("card picker suggestions only for matching stop sensors", async () => {
+  globalThis.window = { customCards: [] };
+  globalThis.customElements = { get: () => true, define: () => {} };
+  globalThis.console.info = () => {};
+  await import("../frontend/src/index.js");
+  const hass = { states: {
+    "sensor.oxford_circus": { attributes: attrs("tube") },
+    "sensor.oxford_circus_rc": { attributes: attrs("bus") },
+    "sensor.london_bridge": { attributes: attrs("nr") },
+    "light.kitchen": { attributes: {} },
+  } };
+  const pick = (type, id) => window.customCards.find((c) => c.type === type).getEntitySuggestion(hass, id);
+  assert.deepEqual(pick("dotmatrix-tube-card", "sensor.oxford_circus"), { config: { type: "custom:dotmatrix-tube-card", entity: "sensor.oxford_circus" } });
+  assert.equal(pick("dotmatrix-tube-card", "sensor.oxford_circus_rc"), null);
+  assert.ok(pick("dotmatrix-bus-card", "sensor.oxford_circus_rc"));
+  assert.ok(pick("dotmatrix-rail-card", "sensor.london_bridge"));
+  assert.equal(pick("dotmatrix-rail-card", "light.kitchen"), null);
+});
