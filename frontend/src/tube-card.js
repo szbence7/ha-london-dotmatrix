@@ -3,7 +3,7 @@
 import { ROW, textWidth } from "./engine.js";
 import { DotmatrixCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
 
-const STAND_BACK = ["*** STAND BACK - TRAIN APPROACHING ***", "STAND BACK - TRAIN APPROACHING", "STAND BACK"];
+const STAND_BACK = "*** STAND BACK - TRAIN APPROACHING ***"; // always with the stars, like the real boards
 const GAP = 3; // dot rows between text rows
 const PAD = 1;
 
@@ -36,6 +36,11 @@ export class DotmatrixTubeCard extends DotmatrixCard {
     empty_text: "",
   };
 
+  _idealColumns() {
+    // wide enough for the whole "*** STAND BACK - TRAIN APPROACHING ***", as on the real boards
+    return Math.max(this.constructor.idealColumns, textWidth(STAND_BACK) + 4);
+  }
+
   _rowLine(dep, n, now, timeW) {
     return [
       { text: String(n), w: textWidth("8"), gap: 4 },
@@ -63,7 +68,7 @@ export class DotmatrixTubeCard extends DotmatrixCard {
     // row 3: STAND BACK > service message > carousel of further trains
     const message = c.show_status ? statusText(attrs, [...new Set(deps.map((d) => d.line))]) : "";
     if (c.stand_back && deps[0] && secondsTo(deps[0], now) <= 30) {
-      row({ cells: [{ text: STAND_BACK.find((m) => textWidth(m) <= cols) || STAND_BACK[2], flex: true, align: "center" }] });
+      row({ cells: [{ text: STAND_BACK, flex: true, align: "center" }] }); // scrolls if the board is too narrow
     } else if (message) {
       row({ cells: [{ text: message, flex: true }] });
     } else {

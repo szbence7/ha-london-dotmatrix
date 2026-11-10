@@ -12,7 +12,7 @@ export const COLORS = [
   { value: "#ff3a1f", label: "Red" },
 ];
 
-const MIN_PITCH = 1.4;
+const MIN_PITCH = 1;
 const MAX_PITCH = 4.5;
 
 const clockFormats = new Map();
@@ -212,7 +212,8 @@ export class DotmatrixCard extends HTMLElement {
     const ideal = Number(this._config.columns) > 0 ? Number(this._config.columns) : this._idealColumns();
     let pitch = Math.min(MAX_PITCH, Math.max(MIN_PITCH, width / ideal));
     if (Number(this._config.columns) > 0) pitch = Math.max(0.5, width / ideal);
-    pitch = Math.max(1 / dpr, Math.round(pitch * dpr) / dpr);
+    // round down to whole device pixels so at least `ideal` columns always fit
+    pitch = Math.max(1 / dpr, Math.floor(pitch * dpr + 1e-6) / dpr);
     const cols = Math.max(20, Math.floor((width * dpr) / Math.round(pitch * dpr)));
     return { width, dpr, pitch, cols };
   }
