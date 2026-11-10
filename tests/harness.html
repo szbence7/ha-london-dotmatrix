@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{background:#111418;font-family:Roboto,Arial,sans-serif;margin:0;padding:16px;--primary-text-color:#e1e1e1;--secondary-text-color:#9b9b9b;--card-background-color:#1c1c1c}
+ha-card{background:#1c1c1c;border-radius:12px;display:block}
+.col{display:grid;gap:16px}
+</style></head><body><div class="col" id="root"></div>
+<script type="module">
+import "../custom_components/glowboard_london/www/glowboard-cards.js";
+import { attrs } from "./fixtures.mjs";
+const params = new URLSearchParams(location.search);
+const width = params.get("w") || "620";
+const cards = [
+  ["glowboard-tube-card", "sensor.oxford_circus", "tube", {}],
+  ["glowboard-bus-card", "sensor.oxford_circus_rc", "bus", {}],
+  ["glowboard-rail-card", "sensor.stratford", "rail", {}],
+  ["glowboard-tube-card", "sensor.oxford_circus", "tube", { platform: "Northbound", title: "Victoria line north" }],
+];
+const states = {};
+for (const [, id, kind] of cards) states[id] = { entity_id: id, state: "1", attributes: attrs(kind) };
+const hass = { states, callWS: async () => ({ stops: [] }) };
+const root = document.getElementById("root");
+root.style.width = width + "px";
+window.cards = cards.map(([tag, entity, , extra]) => {
+  const el = document.createElement(tag);
+  el.setConfig({ type: "custom:" + tag, entity, ...extra });
+  el.hass = hass;
+  root.appendChild(el);
+  return el;
+});
+window.ready = true;
+</script></body></html>
