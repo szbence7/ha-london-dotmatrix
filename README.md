@@ -9,7 +9,7 @@ Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lin
 | Card | Looks like |
 |---|---|
 | **London Dotmatrix · Tube platform board** | the amber Underground platform indicator: two trains, the third row swiping through later trains, `STAND BACK - TRAIN APPROACHING`, service messages and the clock |
-| **London Dotmatrix · Bus stop Countdown** | the red bus stop Countdown sign: `1  31  CAMDEN TOWN  due`, `3 328  GOLDERS GREEN  2min` |
+| **London Dotmatrix · Bus stop Countdown** | the bus stop Countdown sign: `1  31  Camden Town  due`, the first bus fixed and the rows below paging through the next ones |
 | **London Dotmatrix · Rail departure board** | a station departure board for the DLR, Overground, Elizabeth line, trams, piers, the cable car and **National Rail** stations: `1st 10:32 Brighton  6  Exp 10:38`, calling points scrolling under the first train, station messages and the clock |
 
 ![Dotmatrix cards](images/dashboard.png)
@@ -144,10 +144,11 @@ All options are in the visual editor; the YAML names are below.
 | `platform` | tube, rail | every platform | exact platform (`Eastbound - Platform 2`) or part of it (`Eastbound`, `Platform 5`) |
 | `lines` | all | all | only these lines / routes / train operators, e.g. `[central]`, `["25", "n25"]`, `[tl]` (Thameslink) |
 | `color` | all | amber | LED colour (any hex colour) |
-| `rows` | bus, rail | 4 / 3 | departures on the board |
+| `rows` | bus, rail | 3 / 3 | rows on the board |
+| `departures` | bus | 5 | buses shown: the first stays put, the rows below page through the rest (2-3, then 4-5) like the real signs |
 | `max_boards` | tube, rail | 4 | most boards shown (one per platform) |
 | `stand_back` | tube | `true` | `STAND BACK - TRAIN APPROACHING` when the next train is due |
-| `show_status` | all | `true` (bus: `false`) | scroll TfL disruption messages |
+| `show_status` | all | `true` | scroll TfL disruption messages (only when a line is not running a good service) |
 | `show_clock` | all | `true` | clock (always London time) |
 | `show_platform` | tube | `true` | platform caption above each board |
 | `show_header` | bus, rail | `true` | header row on the board |
