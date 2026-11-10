@@ -2,13 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "1/2 · TfL connection",
-        "description": "Live arrivals come from the official **TfL Unified API**.\n\nAn **app key is optional** but recommended: without one TfL only allows a few requests per minute. It is free and takes 2 minutes:\n1. Open {url} and **Sign up** (email + password)\n2. **Products** → subscribe to **500 Requests per min**\n3. **Profile** → copy your **Primary key** and paste it here.\n\nLeave it empty to try the integration first. The key is stored only in your Home Assistant.",
+        "title": "1/2 · Data sources",
+        "description": "**TfL** (Tube, buses, DLR, Overground, Elizabeth line, trams, river buses): the **app key is optional** but recommended, without one TfL only allows a few requests per minute. Free, 2 minutes:\n1. Open {url} and **Sign up**\n2. **Products** → subscribe to **500 Requests per min**\n3. **Profile** → copy the **Primary key**\n\n**National Rail** (Thameslink, Southern, c2c, Southeastern, GWR and every other train operator): needs a **free Rail Data Marketplace key**:\n1. Open {nr_url} → **Register** (individual) and confirm your email\n2. Search the catalogue for **Live Departure Board** and **subscribe** to it\n3. Open your subscription → **Specification** tab → copy the **Consumer key**\n\nLeave both empty to try the integration with TfL only. Keys are stored only in your Home Assistant.",
         "data": {
-          "api_key": "TfL app key (optional)"
+          "api_key": "TfL app key (optional)",
+          "nr_api_key": "National Rail key (optional)"
         },
         "data_description": {
-          "api_key": "32 characters, e.g. 1a2b3c4d…"
+          "api_key": "32 characters, e.g. 1a2b3c4d…",
+          "nr_api_key": "Rail Data Marketplace consumer key, for National Rail trains (Thameslink, Southern, c2c, GWR …)"
         }
       },
       "start": {
@@ -21,14 +23,14 @@
       },
       "search": {
         "title": "Search for a stop",
-        "description": "Type a station or bus stop name (at least 3 letters), e.g. **Oxford Circus**, **Stratford** or **Canary Wharf**. Every TfL mode is searched: Tube, buses, DLR, Overground, Elizabeth line, trams, river buses and the cable car.\n\nAlready selected:\n{selected}",
+        "description": "Type a station or bus stop name (at least 3 letters), e.g. **Oxford Circus**, **Stratford** or **Canary Wharf**. Every TfL mode is searched: Tube, buses, DLR, Overground, Elizabeth line, trams, river buses and the cable car, plus National Rail stations when you added a National Rail key.\n\nAlready selected:\n{selected}",
         "data": {
           "query": "Stop or station name"
         }
       },
       "stops": {
         "title": "Tick your stops",
-        "description": "🚇 Tube · 🚄 Elizabeth line · 🚆 Overground · 🚈 DLR · 🚊 Tram · ⛴️ River Bus · 🚡 Cable Car · 🚌 Bus (with stop letter and direction).\n\nYou can tick several.",
+        "description": "🚇 Tube · 🚄 Elizabeth line · 🚆 Overground · 🚈 DLR · 🚊 Tram · ⛴️ River Bus · 🚡 Cable Car · 🚉 National Rail · 🚌 Bus (with stop letter and direction).\n\nYou can tick several.",
         "data": {
           "stops": "Stops"
         }
@@ -43,16 +45,24 @@
       },
       "reauth_confirm": {
         "title": "TfL rejected the app key",
-        "description": "The saved app key no longer works. Paste a new one from {url}, or leave it empty to continue without a key.",
+        "description": "A saved key no longer works. TfL key: {url} · National Rail key: {nr_url}. Leave a field empty to stop using that key.",
         "data": {
-          "api_key": "TfL app key (optional)"
+          "api_key": "TfL app key (optional)",
+          "nr_api_key": "National Rail key (optional)"
+        },
+        "data_description": {
+          "nr_api_key": "Rail Data Marketplace consumer key, for National Rail trains (Thameslink, Southern, c2c, GWR …)"
         }
       },
       "reconfigure": {
-        "title": "Change the TfL app key",
-        "description": "Paste a new key from {url}, or leave it empty to use TfL without a key.",
+        "title": "Change the keys",
+        "description": "TfL key: {url} · National Rail (Rail Data Marketplace) key: {nr_url}. Leave a field empty to stop using that key.",
         "data": {
-          "api_key": "TfL app key (optional)"
+          "api_key": "TfL app key (optional)",
+          "nr_api_key": "National Rail key (optional)"
+        },
+        "data_description": {
+          "nr_api_key": "Rail Data Marketplace consumer key, for National Rail trains (Thameslink, Southern, c2c, GWR …)"
         }
       }
     },
@@ -62,7 +72,9 @@
       "unknown": "Unexpected error from TfL.",
       "query_too_short": "Type at least 3 characters.",
       "no_stops": "No stop found. Try a shorter or different name.",
-      "select_one": "Tick at least one stop."
+      "select_one": "Tick at least one stop.",
+      "invalid_nr_auth": "National Rail rejected this key. Copy the Consumer key of your Live Departure Board subscription (it may take a few minutes after approval).",
+      "nr_cannot_connect": "Cannot reach the National Rail Live Departure Board with this key. Check that your subscription is approved."
     },
     "abort": {
       "single_instance_allowed": "London Dotmatrix is already set up. Add more stops with the **Add stop** button on the integration page.",
@@ -86,7 +98,7 @@
         },
         "pick": {
           "title": "Pick the stop",
-          "description": "🚇 Tube · 🚄 Elizabeth line · 🚆 Overground · 🚈 DLR · 🚊 Tram · ⛴️ River Bus · 🚡 Cable Car · 🚌 Bus",
+          "description": "🚇 Tube · 🚄 Elizabeth line · 🚆 Overground · 🚈 DLR · 🚊 Tram · ⛴️ River Bus · 🚡 Cable Car · 🚉 National Rail · 🚌 Bus",
           "data": {
             "stop_id": "Stop"
           }
