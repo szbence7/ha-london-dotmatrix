@@ -8,6 +8,7 @@ const { filterDepartures, statusText, londonClock } = await import("../frontend/
 const { tubeTime } = await import("../frontend/src/tube-card.js");
 const { busTime } = await import("../frontend/src/bus-card.js");
 const { attrs } = await import("./fixtures.mjs");
+const { cardEntities } = await import("../frontend/src/editor.js");
 
 test("glyph matrix is 10 dots high and proportional", () => {
   const m = textMatrix("Hi");
@@ -43,4 +44,17 @@ test("status text only for disrupted lines", () => {
 test("clock is London time", () => {
   assert.equal(londonClock(Date.UTC(2026, 6, 1, 12, 0, 5)), "13:00:05"); // BST
   assert.equal(londonClock(Date.UTC(2026, 11, 1, 12, 0, 5), false), "12:00"); // GMT
+});
+
+test("each card only offers its own kind of stop", () => {
+  const states = {
+    "sensor.oxford_circus": { attributes: attrs("tube") },
+    "sensor.oxford_circus_rc": { attributes: attrs("bus") },
+    "sensor.stratford": { attributes: attrs("rail") },
+    "sensor.other": { attributes: {} },
+  };
+  const hass = { states };
+  assert.deepEqual(cardEntities(hass, ["tube"]), ["sensor.oxford_circus"]);
+  assert.deepEqual(cardEntities(hass, ["bus"]), ["sensor.oxford_circus_rc"]);
+  assert.deepEqual(cardEntities(hass, ["dlr", "overground", "elizabeth-line"]), ["sensor.stratford"]);
 });

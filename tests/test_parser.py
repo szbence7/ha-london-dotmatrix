@@ -1,6 +1,6 @@
 """Pure parser tests."""
 
-from custom_components.glowboard_london.parser import (
+from custom_components.london_dotmatrix.parser import (
     clean_name,
     collect_stops,
     parse_arrivals,

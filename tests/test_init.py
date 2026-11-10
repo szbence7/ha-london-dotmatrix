@@ -9,13 +9,13 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.glowboard_london.api import TflAuthError, TflConnectionError
-from custom_components.glowboard_london.const import DOMAIN
-from custom_components.glowboard_london.parser import parse_arrivals
+from custom_components.london_dotmatrix.api import TflAuthError, TflConnectionError
+from custom_components.london_dotmatrix.const import DOMAIN
+from custom_components.london_dotmatrix.parser import parse_arrivals
 
 from .conftest import NOW
 
-API = "custom_components.glowboard_london.api.TflApi"
+API = "custom_components.london_dotmatrix.api.TflApi"
 LINE = lambda i, n, m, c="#E32017": {"id": i, "name": n, "mode": m, "color": c, "text_color": "#FFFFFF"}  # noqa: E731
 STOPS = [
     {"id": "940GZZLUOXC", "name": "Oxford Circus", "letter": "", "towards": "", "modes": ["tube"],
@@ -48,7 +48,7 @@ async def test_full_flow_without_key(hass: HomeAssistant):
         assert result["errors"] == {"base": "select_one"}
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"stops": ["940GZZLUOXC", "490000173RC"]})
         assert result["type"] is FlowResultType.MENU
-        with patch("custom_components.glowboard_london.async_setup_entry", AsyncMock(return_value=True)):
+        with patch("custom_components.london_dotmatrix.async_setup_entry", AsyncMock(return_value=True)):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "finish"})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"] == {"api_key": ""}
@@ -84,8 +84,8 @@ async def setup_entry(hass, tube_arrivals, bus_arrivals, stops=STOPS):
 
     status = {"victoria": {"line": "victoria", "name": "Victoria", "severity": 9, "description": "Minor Delays", "reason": "Delays"}}
     with patch(f"{API}.arrivals", arrivals), patch(f"{API}.line_status", AsyncMock(return_value=status)), \
-         patch("custom_components.glowboard_london.parser.parse_arrivals", parse_arrivals), \
-         patch("custom_components.glowboard_london.coordinator.time.time", return_value=NOW):
+         patch("custom_components.london_dotmatrix.parser.parse_arrivals", parse_arrivals), \
+         patch("custom_components.london_dotmatrix.coordinator.time.time", return_value=NOW):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
     return entry
@@ -169,4 +169,4 @@ async def test_frontend_resource_registered(hass: HomeAssistant, tube_arrivals, 
 
     resources = hass.data[LOVELACE_DATA].resources
     urls = [r["url"] for r in resources.async_items()]
-    assert urls == ["/glowboard_london/glowboard-cards.js?v=0.1.0"]
+    assert urls == ["/london_dotmatrix/dotmatrix-cards.js?v=0.1.0"]

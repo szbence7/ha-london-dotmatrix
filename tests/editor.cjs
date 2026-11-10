@@ -25,8 +25,8 @@ const server = http.createServer((req, res) => {
       ] };
       return { entity_id: "sensor.oxford_circus_rc" };
     } };
-    const ed = document.createElement("glowboard-card-editor");
-    ed.setConfig({ type: "custom:glowboard-tube-card", entity: "sensor.oxford_circus" });
+    const ed = document.createElement("dotmatrix-card-editor");
+    ed.setConfig({ type: "custom:dotmatrix-tube-card", entity: "sensor.oxford_circus" });
     ed.hass = hass;
     document.getElementById("root").appendChild(ed);
     let changed = null; ed.addEventListener("config-changed", (e) => changed = e.detail.config);

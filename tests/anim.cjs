@@ -18,14 +18,14 @@ const server = http.createServer((req, res) => {
   await p.goto(`http://localhost:${server.address().port}/tests/harness.html?w=520`);
   await p.waitForFunction("window.ready");
   // tube card only, no status message -> carousel row
-  await p.evaluate(() => { const c = window.cards[0]; c.setConfig({ type: "custom:glowboard-tube-card", entity: "sensor.oxford_circus", show_status: false, stand_back: false, platform: "Eastbound" }); c.hass = c._hass; window.cards.slice(1).forEach(x => x.remove()); });
+  await p.evaluate(() => { const c = window.cards[0]; c.setConfig({ type: "custom:dotmatrix-tube-card", entity: "sensor.oxford_circus", show_status: false, stand_back: false, platform: "Eastbound" }); c.hass = c._hass; window.cards.slice(1).forEach(x => x.remove()); });
   await p.waitForTimeout(1500);
   const d0 = await p.evaluate("[window.__draws, window.__timers]");
   await p.waitForTimeout(5000);
   const d1 = await p.evaluate("[window.__draws, window.__timers]");
   console.log("drawImage/s", ((d1[0] - d0[0]) / 5).toFixed(1), "timers/s", ((d1[1] - d0[1]) / 5).toFixed(1));
   // capture the swipe
-  const el = await p.$("glowboard-tube-card");
+  const el = await p.$("dotmatrix-tube-card");
   for (let i = 0; i < 6; i++) { await el.screenshot({ path: `${OUT}-anim${i}.png` }); await p.waitForTimeout(150); }
   // hidden: no work
   await p.evaluate(() => window.cards[0].style.display = "none");

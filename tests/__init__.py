@@ -1,1 +1,1 @@
-"""Tests for Glowboard London."""
+"""Tests for London Dotmatrix."""
