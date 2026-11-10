@@ -2,25 +2,26 @@
 
 # London Dotmatrix
 
-**Live TfL arrivals in Home Assistant, on dot-matrix boards that look like the real thing.**
+**Live London departures in Home Assistant, on dot-matrix boards that look like the real thing.**
 
-Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lines, Elizabeth line, trams, river buses and the cable car**. One integration, three dashboard cards:
+Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lines, Elizabeth line, trams, river buses and the cable car**, plus **National Rail trains from every GB operator** (Thameslink, Southern, c2c, Southeastern, GWR, …). One integration, three dashboard cards:
 
 | Card | Looks like |
 |---|---|
 | **London Dotmatrix · Tube platform board** | the amber Underground platform indicator: two trains, the third row swiping through later trains, `STAND BACK - TRAIN APPROACHING`, service messages and the clock |
 | **London Dotmatrix · Bus stop Countdown** | the bus stop Countdown sign: stop name and letter, route, destination, `due` / `3 min` |
-| **London Dotmatrix · Rail departure board** | a station departure board for the DLR, Overground, Elizabeth line, trams, piers and the cable car: `1st / 2nd / 3rd`, header with the clock, disruptions |
+| **London Dotmatrix · Rail departure board** | a station departure board for the DLR, Overground, Elizabeth line, trams, piers, the cable car and **National Rail** stations: `1st 10:32 Brighton  6  Exp 10:38`, calling points scrolling under the first train, station messages and the clock |
 
 ![Dotmatrix cards](images/dashboard.png)
 
-> Unofficial project, not affiliated with or endorsed by Transport for London. Powered by TfL Open Data.
+> Unofficial project, not affiliated with or endorsed by Transport for London or National Rail. Powered by TfL Open Data and National Rail Enquiries.
 
 ## Contents
 
 - [Features](#features)
 - [Install with HACS](#install-with-hacs)
 - [Set up](#set-up)
+- [API keys: where to get them](#api-keys-where-to-get-them)
 - [Add the cards](#add-the-cards)
 - [Card options](#card-options)
 - [Sensors](#sensors)
@@ -28,9 +29,10 @@ Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lin
 
 ## Features
 
-- ✅ **Works without an API key**: try it in 2 minutes; add a free TfL app key later for a much higher rate limit
+- ✅ **Works without an API key** for TfL: try it in 2 minutes; add a free TfL app key later for a much higher rate limit
+- ✅ **National Rail too**: add a free Rail Data Marketplace key and search any GB station (name or CRS code, e.g. *London Bridge* or *LBG*)
 - ✅ **Live search while you type** in the card editor, with coloured line badges, stop letters and direction; one click adds the stop
-- ✅ **Each card finds its own stops**: the Tube card only Tube stations, the bus card only bus stops, the rail card the DLR, Overground, Elizabeth line, tram stops, piers and the cable car
+- ✅ **Each card finds its own stops**: the Tube card only Tube stations, the bus card only bus stops, the rail card the DLR, Overground, Elizabeth line, tram stops, piers, the cable car and National Rail stations
 - ✅ **Interchanges are split up**: search "Stratford" and pick the Tube, the Elizabeth line / Overground station, the DLR or any bus stop
 - ✅ **One board per platform** on the Tube card (or pick one platform or one direction, e.g. *Northbound*)
 - ✅ **Disruption messages** from TfL line status scroll on the board
@@ -51,15 +53,14 @@ The three cards come with the integration: no separate frontend download. The ca
 
 **Settings → Devices & services → Add integration → London Dotmatrix**
 
-### 1/2 · TfL app key (optional)
+### 1/2 · Data sources
 
-You can leave it empty. Without a key TfL only allows a few requests per minute, which is fine for one or two stops. For more stops get a free key (2 minutes):
+Two optional keys (see [where to get them](#api-keys-where-to-get-them)):
 
-1. Open [api-portal.tfl.gov.uk](https://api-portal.tfl.gov.uk) and **Sign up**
-2. **Products** → subscribe to **500 Requests per min** (free)
-3. **Profile** → copy the **Primary key** and paste it in
+- **TfL app key**: can stay empty. Without it TfL only allows a few requests per minute, fine for one or two stops.
+- **National Rail key**: only needed for National Rail trains. Without it the integration shows TfL services only.
 
-The key is stored only in your Home Assistant. You can add, change or remove it later: **London Dotmatrix → ⋮ → Reconfigure**.
+Keys are stored only in your Home Assistant. Add, change or remove them later: **London Dotmatrix → ⋮ → Reconfigure**.
 
 ### 2/2 · Stops
 
@@ -77,7 +78,29 @@ Every stop becomes a device with one sensor.
 | Add a stop | from any card editor, or **+ Add stop** on the integration page |
 | Remove a stop | ⋮ on the stop's row → **Delete** |
 | Update interval, departures kept | the ⚙️ cog on the integration |
-| App key | ⋮ → **Reconfigure** |
+| API keys | ⋮ → **Reconfigure** |
+
+## API keys: where to get them
+
+Both are free.
+
+### TfL app key (Tube, buses, DLR, Overground, Elizabeth line, trams, river buses)
+
+1. Open [api-portal.tfl.gov.uk](https://api-portal.tfl.gov.uk) and **Sign up** (email and password), then confirm your email
+2. **Products** → subscribe to **500 Requests per min**
+3. **Profile** → copy the **Primary key**
+4. Paste it into the **TfL app key** field
+
+### National Rail key (Thameslink, Southern, c2c, Southeastern, GWR and every other GB operator)
+
+The data is National Rail's Darwin *Live Departure Board*, distributed by the Rail Data Marketplace.
+
+1. Open [raildata.org.uk](https://raildata.org.uk) → **Register**, choose *individual not affiliated with a company*, confirm your email and set up two-factor sign-in
+2. Search the data catalogue for **Live Departure Board** (the Darwin LDBWS product) and **Subscribe**
+3. When the subscription is approved, open it → **Specification** tab → copy the **Consumer key**
+4. Paste it into the **National Rail key** field
+
+Then search for a station by name or CRS code (e.g. *London Bridge* or *LBG*) in the rail card editor.
 
 ## Add the cards
 
@@ -117,7 +140,7 @@ All options are in the visual editor; the YAML names are below.
 | `entity` | all | | the stop's sensor |
 | `title` | all | stop name | text above the board |
 | `platform` | tube, rail | every platform | exact platform (`Eastbound - Platform 2`) or part of it (`Eastbound`, `Platform 5`) |
-| `lines` | all | all | only these lines / routes, e.g. `[central]`, `["25", "n25"]` |
+| `lines` | all | all | only these lines / routes / train operators, e.g. `[central]`, `["25", "n25"]`, `[tl]` (Thameslink) |
 | `color` | all | amber | LED colour (any hex colour) |
 | `rows` | bus, rail | 4 / 3 | departures on the board |
 | `max_boards` | tube, rail | 4 | most boards shown (one per platform) |
@@ -127,7 +150,8 @@ All options are in the visual editor; the YAML names are below.
 | `show_platform` | tube | `true` | platform caption above each board |
 | `show_header` | bus, rail | `true` | header row on the board |
 | `group_by_platform` | rail | `false` | one board per platform |
-| `show_line` | rail | `false` | line name on every row |
+| `show_line` | rail | `false` | line / operator name on every row |
+| `show_calling_at` | rail | `true` | National Rail: calling points scrolling under the first train |
 | `header` | rail | platform or line | custom header text |
 | `scroll_speed` | all | 22 | dots per second for long texts |
 | `columns` | all | automatic | LEDs per row (fixed resolution) |
@@ -184,7 +208,9 @@ action:
 
 **"Cannot reach TfL / rate limit".** Without an app key TfL allows only a few requests per minute. Add a free key (see above) or raise the update interval.
 
-**National Rail trains are missing.** TfL only predicts its own services. National Rail (e.g. c2c, Southern) needs the separate Darwin feed and is not covered.
+**National Rail stations don't show up in the search.** Add your National Rail key first (⋮ → Reconfigure). National Rail stations appear in the **rail** card's search only.
+
+**"National Rail rejected this key".** Use the *Consumer key* of your **Live Departure Board** subscription, and wait until the subscription is approved. Keys from the old OpenLDBWS (SOAP) registration do not work here.
 
 **I can't find my bus stop.** Type the stop name as written on the stop (e.g. *Brixton Station*) and look for the right letter and direction. Bus stations expand into all their stops.
 
@@ -195,6 +221,8 @@ action:
 ## Credits
 
 - Data: [TfL Unified API](https://api.tfl.gov.uk). Powered by TfL Open Data. Contains OS data © Crown copyright and database rights.
+- National Rail data: Darwin Live Departure Board via the [Rail Data Marketplace](https://raildata.org.uk). Powered by National Rail Enquiries.
+- Station list: [uk-railway-stations](https://github.com/davwheat/uk-railway-stations) by David Wheatley, based on [Trainline EU stations](https://github.com/trainline-eu/stations), Open Database License ([licence](custom_components/london_dotmatrix/data/LICENSE-ODbL.txt)).
 - Typeface: [London Underground dot-matrix typeface](https://github.com/petykowski/London-Underground-Dot-Matrix-Typeface) by petykowski, SIL Open Font License 1.1 ([licence](frontend/fonts/OFL-LICENSE.txt)), rendered into LED bitmaps.
 - Not affiliated with Transport for London. "Underground" and "Overground" are used only to describe the services.
 
