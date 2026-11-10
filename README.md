@@ -1,4 +1,6 @@
-# 🟧 London Dotmatrix
+<p align="center"><img src="images/logo.png" width="420" alt="London Dotmatrix"></p>
+
+# London Dotmatrix
 
 **Live TfL arrivals in Home Assistant, on dot-matrix boards that look like the real thing.**
 
