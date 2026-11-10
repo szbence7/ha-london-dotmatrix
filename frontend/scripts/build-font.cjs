@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+/**
+ * Rasterises the London Underground dot-matrix typeface (SIL OFL, see fonts/OFL-LICENSE.txt)
+ * into per-glyph dot bitmaps: frontend/src/font-data.js.
+ *
+ * The font's glyphs are circles laid out on a dot grid (pitch = 33.35/300 em), so sampling the
+ * centre of every grid cell gives the exact LED pattern. The cards then draw from these bitmaps
+ * (pre-rendered strips, bitmap copies only) instead of calling fillText with a web font.
+ *
+ * Run once (needs Playwright): node frontend/scripts/build-font.cjs
+ */
+const fs = require("fs");
+const path = require("path");
+const { chromium } = require("playwright");
+
+const ROOT = path.join(__dirname, "..");
+const FONT = path.join(ROOT, "fonts", "LondonUnderground-Regular.ttf");
+const OUT = path.join(ROOT, "src", "font-data.js");
+const TOP = 7; // highest dot row above the baseline
+const BOTTOM = -2; // lowest (descender) row
+const HEIGHT = TOP - BOTTOM + 1;
+
+// Glyphs the font does not have, drawn in the same style (rows top -> bottom, 10 rows).
+const EXTRA = {
+  "(": ["..#.", ".#..", "#...", "#...", "#...", "#...", "#...", ".#..", "..#.", "...."],
+  ")": [".#..", "..#.", "...#", "...#", "...#", "...#", "...#", "..#.", ".#..", "...."],
+  "/": ["....#.", "....#.", "...#..", "...#..", "..#...", ".#....", ".#....", "#.....", "#.....", "......"],
+  "!": ["#.", "#.", "#.", "#.", "#.", "#.", "#.", "..", "#.", ".."],
+  "?": [".####..", "#....#.", ".....#.", "....#..", "...#...", "...#...", ".......", "...#...", "...#...", "......."],
+  ";": ["...", "...", "##.", "##.", "...", "##.", "##.", ".#.", "#..", "..."],
+  '"': ["#.#.", "#.#.", "#.#.", "....", "....", "....", "....", "....", "....", "...."],
+  "£": ["..###..", ".#...#.", ".#.....", ".#.....", "####...", ".#.....", ".#.....", ".#.....", "######.", "......."],
+  "#": [".#.#..", ".#.#..", "#####.", ".#.#..", ".#.#..", "#####.", ".#.#..", ".#.#..", "......", "......"],
+  "@": [".####..", "#....#.", "#.##.#.", "#.#.##.", "#.#.##.", "#..##..", "#......", ".####..", ".......", "......."],
+  "%": ["##...#.", "##..#..", "...#...", "...#...", "..#....", "..#....", ".#...##", "#....##", ".......", "......."],
+  "=": ["......", "......", "......", "#####.", "......", "#####.", "......", "......", "......", "......"],
+  "_": ["......", "......", "......", "......", "......", "......", "......", "......", "#####.", "......"],
+  "<": ["....#.", "...#..", "..#...", ".#....", "#.....", ".#....", "..#...", "...#..", "....#.", "......"],
+  ">": ["#.....", ".#....", "..#...", "...#..", "....#.", "...#..", "..#...", ".#....", "#.....", "......"],
+  "[": ["###.", "#...", "#...", "#...", "#...", "#...", "#...", "#...", "###.", "...."],
+  "]": ["###.", "..#.", "..#.", "..#.", "..#.", "..#.", "..#.", "..#.", "###.", "...."],
+};
+
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const font = fs.readFileSync(FONT).toString("base64");
+  await page.setContent("<html><body></body></html>");
+  const raw = await page.evaluate(async ({ font, TOP, BOTTOM }) => {
+    const face = new FontFace("LU", `url(data:font/ttf;base64,${font})`);
+    await face.load();
+    document.fonts.add(face);
+    const P = 20;
+    const S = (300 * P) / 33.35;
+    const W = 400, H = 400, BASE = 300, X0 = 50;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const out = {};
+    for (let code = 32; code < 127; code++) {
+      const ch = String.fromCharCode(code);
+      ctx.font = `${S}px LU, monospace`;
+      const a = ctx.measureText(ch).width;
+      ctx.font = `${S}px LU, serif`;
+      if (Math.abs(a - ctx.measureText(ch).width) > 0.01) continue; // not in the font
+      ctx.font = `${S}px LU`;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillText(ch, X0, BASE);
+      const adv = Math.round(a / P);
+      const data = ctx.getImageData(0, 0, W, H).data;
+      const rows = [];
+      for (let r = TOP; r >= BOTTOM; r--) {
+        let bits = "";
+        for (let k = 0; k < adv; k++) {
+          const x = Math.round(X0 + (k + 0.5) * P);
+          const y = Math.round(BASE - (r + 0.5) * P);
+          bits += data[(y * W + x) * 4 + 3] > 128 ? "#" : ".";
+        }
+        rows.push(bits);
+      }
+      out[ch] = rows;
+    }
+    return out;
+  }, { font, TOP, BOTTOM });
+  await browser.close();
+
+  const glyphs = { ...EXTRA, ...raw };
+  const encode = (rows) => {
+    const width = rows[0].length;
+    if (rows.length !== HEIGHT || rows.some((r) => r.length !== width)) throw new Error(`bad glyph ${rows}`);
+    // each row as a bitmask, bit 0 = leftmost column
+    return [width, ...rows.map((r) => [...r].reduce((m, c, i) => m | (c === "#" ? 1 << i : 0), 0))];
+  };
+  const table = Object.fromEntries(Object.entries(glyphs).sort().map(([ch, rows]) => [ch, encode(rows)]));
+  const header = `/* Generated by frontend/scripts/build-font.cjs. Do not edit.
+ * Dot bitmaps rasterised from the "London Underground" dot-matrix typeface by petykowski
+ * (https://github.com/petykowski/London-Underground-Dot-Matrix-Typeface), SIL Open Font
+ * License 1.1 (see frontend/fonts/OFL-LICENSE.txt). Extra punctuation drawn for Glowboard.
+ * Format: char -> [width, row0 … row${HEIGHT - 1}] (top to bottom, bit 0 = left column). */
+`;
+  fs.writeFileSync(OUT, `${header}export const FONT_HEIGHT = ${HEIGHT};\nexport const GLYPHS = ${JSON.stringify(table)};\n`);
+  console.log(`wrote ${Object.keys(table).length} glyphs to ${path.relative(process.cwd(), OUT)}`);
+})();
