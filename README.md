@@ -1,4 +1,4 @@
-# 🟧 Glowboard London
+# 🟧 London Dotmatrix
 
 **Live TfL arrivals in Home Assistant, on dot-matrix boards that look like the real thing.**
 
@@ -6,11 +6,11 @@ Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lin
 
 | Card | Looks like |
 |---|---|
-| **Glowboard · Tube platform board** | the amber Underground platform indicator: two trains, the third row swiping through later trains, `STAND BACK - TRAIN APPROACHING`, service messages and the clock |
-| **Glowboard · Bus stop Countdown** | the bus stop Countdown sign: stop name and letter, route, destination, `due` / `3 min` |
-| **Glowboard · Rail departure board** | a station departure board for the DLR, Overground, Elizabeth line, trams, piers and the cable car: `1st / 2nd / 3rd`, header with the clock, disruptions |
+| **London Dotmatrix · Tube platform board** | the amber Underground platform indicator: two trains, the third row swiping through later trains, `STAND BACK - TRAIN APPROACHING`, service messages and the clock |
+| **London Dotmatrix · Bus stop Countdown** | the bus stop Countdown sign: stop name and letter, route, destination, `due` / `3 min` |
+| **London Dotmatrix · Rail departure board** | a station departure board for the DLR, Overground, Elizabeth line, trams, piers and the cable car: `1st / 2nd / 3rd`, header with the clock, disruptions |
 
-![Glowboard cards](images/dashboard.png)
+![Dotmatrix cards](images/dashboard.png)
 
 > Unofficial project, not affiliated with or endorsed by Transport for London. Powered by TfL Open Data.
 
@@ -28,6 +28,7 @@ Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lin
 
 - ✅ **Works without an API key**: try it in 2 minutes; add a free TfL app key later for a much higher rate limit
 - ✅ **Live search while you type** in the card editor, with coloured line badges, stop letters and direction; one click adds the stop
+- ✅ **Each card finds its own stops**: the Tube card only Tube stations, the bus card only bus stops, the rail card the DLR, Overground, Elizabeth line, tram stops, piers and the cable car
 - ✅ **Interchanges are split up**: search "Stratford" and pick the Tube, the Elizabeth line / Overground station, the DLR or any bus stop
 - ✅ **One board per platform** on the Tube card (or pick one platform or one direction, e.g. *Northbound*)
 - ✅ **Disruption messages** from TfL line status scroll on the board
@@ -38,15 +39,15 @@ Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lin
 ## Install with HACS
 
 1. **HACS → ⋮ (top right) → Custom repositories**
-2. Repository: `https://github.com/szbence7/ha-glowboard-london`, type: **Integration** → **Add**
-3. Search for **Glowboard London** → **Download**
+2. Repository: `https://github.com/szbence7/ha-london-dotmatrix`, type: **Integration** → **Add**
+3. Search for **London Dotmatrix** → **Download**
 4. **Restart Home Assistant** (Settings → System → Restart)
 
 The three cards come with the integration: no separate frontend download. The card resource is added to your dashboards automatically.
 
 ## Set up
 
-**Settings → Devices & services → Add integration → Glowboard London**
+**Settings → Devices & services → Add integration → London Dotmatrix**
 
 ### 1/2 · TfL app key (optional)
 
@@ -56,11 +57,11 @@ You can leave it empty. Without a key TfL only allows a few requests per minute,
 2. **Products** → subscribe to **500 Requests per min** (free)
 3. **Profile** → copy the **Primary key** and paste it in
 
-The key is stored only in your Home Assistant. You can add, change or remove it later: **Glowboard London → ⋮ → Reconfigure**.
+The key is stored only in your Home Assistant. You can add, change or remove it later: **London Dotmatrix → ⋮ → Reconfigure**.
 
 ### 2/2 · Stops
 
-- **A) Easiest: later, in the card editor ⭐** Pick *Later, from the card editor*, add a Glowboard card to your dashboard and start typing a station or stop name. Results appear while you type; click one and it is added.
+- **A) Easiest: later, in the card editor ⭐** Pick *Later, from the card editor*, add a Dotmatrix card to your dashboard and start typing a station or stop name. Results appear while you type; click one and it is added.
 - **B) Right now:** pick *Search for a stop now*, type a name, tick one or more stops.
 
 Every stop becomes a device with one sensor.
@@ -78,22 +79,24 @@ Every stop becomes a device with one sensor.
 
 ## Add the cards
 
-Edit your dashboard → **Add card** → search for **Glowboard**. Choose a card, search for the stop in the editor, done.
+**Which card?** The **Tube** card copies the Underground platform indicator: one board per platform, trains numbered 1, 2, the third row swipes through later trains or shows STAND BACK, and the clock ticks at the bottom. The **rail** card is a station departure board: a header with the platform or line and the time, then as many `1st / 2nd / 3rd` rows as you like, one board for the whole station by default. The **bus** card is the Countdown sign at the stop.
+
+Edit your dashboard → **Add card** → search for **Dotmatrix**. Choose a card, search for the stop in the editor, done.
 
 ```yaml
-type: custom:glowboard-tube-card
+type: custom:dotmatrix-tube-card
 entity: sensor.oxford_circus_next_arrival
 platform: Northbound        # optional: one platform, or a direction
 ```
 
 ```yaml
-type: custom:glowboard-bus-card
+type: custom:dotmatrix-bus-card
 entity: sensor.oxford_circus_station_stop_rc_next_arrival
 rows: 4
 ```
 
 ```yaml
-type: custom:glowboard-rail-card
+type: custom:dotmatrix-rail-card
 entity: sensor.stratford_next_arrival
 lines: [elizabeth]
 group_by_platform: true
@@ -101,7 +104,7 @@ group_by_platform: true
 
 On phones the boards shrink their LEDs to keep a full line visible:
 
-<img src="images/mobile.png" width="360" alt="Glowboard on a phone">
+<img src="images/mobile.png" width="360" alt="Dotmatrix on a phone">
 
 ## Card options
 
@@ -198,7 +201,7 @@ action:
 ```bash
 npm install
 npm run font    # only if the typeface changes (needs Playwright)
-npm run build   # frontend/src -> custom_components/glowboard_london/www/glowboard-cards.js
+npm run build   # frontend/src -> custom_components/london_dotmatrix/www/dotmatrix-cards.js
 npm test        # card logic
 pip install pytest-homeassistant-custom-component && pytest   # integration
 ```
