@@ -9,7 +9,7 @@ Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lin
 | Card | Looks like |
 |---|---|
 | **London Dotmatrix · Tube platform board** | the amber Underground platform indicator: two trains, the third row swiping through later trains, `STAND BACK - TRAIN APPROACHING`, service messages and the clock |
-| **London Dotmatrix · Bus stop Countdown** | the bus stop Countdown sign: stop name and letter, route, destination, `due` / `3 min` |
+| **London Dotmatrix · Bus stop Countdown** | the red bus stop Countdown sign: `1  31  CAMDEN TOWN  due`, `3 328  GOLDERS GREEN  2min` |
 | **London Dotmatrix · Rail departure board** | a station departure board for the DLR, Overground, Elizabeth line, trams, piers, the cable car and **National Rail** stations: `1st 10:32 Brighton  6  Exp 10:38`, calling points scrolling under the first train, station messages and the clock |
 
 ![Dotmatrix cards](images/dashboard.png)
@@ -225,7 +225,7 @@ action:
 - Data: [TfL Unified API](https://api.tfl.gov.uk). Powered by TfL Open Data. Contains OS data © Crown copyright and database rights.
 - National Rail data: Darwin Live Departure Board via the [Rail Data Marketplace](https://raildata.org.uk). Powered by National Rail Enquiries.
 - Station list: [uk-railway-stations](https://github.com/davwheat/uk-railway-stations) by David Wheatley, based on [Trainline EU stations](https://github.com/trainline-eu/stations), Open Database License ([licence](custom_components/london_dotmatrix/data/LICENSE-ODbL.txt)).
-- Typeface: [London Underground dot-matrix typeface](https://github.com/petykowski/London-Underground-Dot-Matrix-Typeface) by petykowski, SIL Open Font License 1.1 ([licence](frontend/fonts/OFL-LICENSE.txt)), rendered into LED bitmaps.
+- Typefaces (SIL Open Font License 1.1, rendered into LED bitmaps, see [frontend/fonts](frontend/fonts/README.md)): [London Underground dot-matrix typeface](https://github.com/petykowski/London-Underground-Dot-Matrix-Typeface) by petykowski (Tube boards) and [Dot Matrix Typeface](https://github.com/DanielHartUK/Dot-Matrix-Typeface) by Daniel Hart (station boards, bus Countdown).
 - Not affiliated with Transport for London. "Underground" and "Overground" are used only to describe the services.
 
 ## Development
