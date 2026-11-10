@@ -97,3 +97,43 @@ def stratford_hub():
             stop_point("910GSTFDNR", "Stratford NR only", "NaptanRailStation", [("national-rail", ["c2c"])]),
         ],
     )
+
+
+@pytest.fixture
+def nr_board():
+    """GetDepBoardWithDetails response (field names from the official LDBWS contract)."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    london = datetime.fromtimestamp(NOW, ZoneInfo("Europe/London"))
+    hhmm = lambda minutes: (london + timedelta(minutes=minutes)).strftime("%H:%M")  # noqa: E731
+    return {
+        "generatedAt": "2026-11-10T10:00:00Z",
+        "locationName": "London Bridge",
+        "crs": "LBG",
+        "platformAvailable": True,
+        "nrccMessages": [{"Value": "<p>Disruption between A and B.</p>"}],
+        "trainServices": [
+            {
+                "std": hhmm(20), "etd": hhmm(24), "platform": "6", "operator": "Southern", "operatorCode": "SN",
+                "isCancelled": False, "serviceID": "B", "delayReason": "This train has been delayed by a signalling fault",
+                "destination": [{"locationName": "Brighton", "crs": "BTN"}],
+                "subsequentCallingPoints": [{"callingPoint": [{"locationName": "East Croydon", "st": hhmm(32), "et": "On time"}]}],
+            },
+            {
+                "std": hhmm(5), "etd": "On time", "platform": "4", "operator": "Thameslink", "operatorCode": "TL",
+                "isCancelled": False, "serviceID": "A",
+                "destination": [{"locationName": "Bedford", "crs": "BDM"}],
+                "subsequentCallingPoints": [{"callingPoint": [
+                    {"locationName": "Blackfriars", "st": hhmm(8), "et": "On time"},
+                    {"locationName": "City Thameslink", "st": hhmm(10), "et": "On time"},
+                    {"locationName": "Farringdon", "st": hhmm(12), "et": "On time"},
+                ]}],
+            },
+            {
+                "std": hhmm(30), "etd": "Cancelled", "operator": "Southeastern", "operatorCode": "SE", "isCancelled": True,
+                "cancelReason": "This train has been cancelled because of a shortage of train crew",
+                "destination": [{"locationName": "Dartford", "crs": "DFD", "via": "via Greenwich"}],
+            },
+        ],
+    }

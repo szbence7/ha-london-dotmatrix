@@ -51,7 +51,7 @@ async def test_full_flow_without_key(hass: HomeAssistant):
         with patch("custom_components.london_dotmatrix.async_setup_entry", AsyncMock(return_value=True)):
             result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "finish"})
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"] == {"api_key": ""}
+    assert result["data"] == {"api_key": "", "nr_api_key": ""}
     titles = sorted(s.title for s in result["result"].subentries.values())
     assert titles == ["Oxford Circus", "Oxford Circus Station (Stop RC)"]
 
@@ -60,7 +60,7 @@ async def test_bad_key_and_connection(hass: HomeAssistant):
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
     with patch(f"{API}.validate", AsyncMock(side_effect=TflAuthError)):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"api_key": "nope"})
-    assert result["errors"] == {"base": "invalid_auth"}
+    assert result["errors"] == {"api_key": "invalid_auth"}
     with patch(f"{API}.validate", AsyncMock(side_effect=TflConnectionError)):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"api_key": "x"})
     assert result["errors"] == {"base": "cannot_connect"}
@@ -169,4 +169,54 @@ async def test_frontend_resource_registered(hass: HomeAssistant, tube_arrivals, 
 
     resources = hass.data[LOVELACE_DATA].resources
     urls = [r["url"] for r in resources.async_items()]
-    assert urls == ["/london_dotmatrix/dotmatrix-cards.js?v=0.1.0"]
+    assert urls == ["/london_dotmatrix/dotmatrix-cards.js?v=0.2.0"]
+
+
+NR = "custom_components.london_dotmatrix.national_rail.NationalRailApi"
+
+
+async def test_flow_with_national_rail_key(hass: HomeAssistant):
+    with patch(f"{API}.validate", AsyncMock()), patch(f"{NR}.validate", AsyncMock(side_effect=TflAuthError)):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"nr_api_key": "bad"})
+    assert result["errors"] == {"nr_api_key": "invalid_nr_auth"}
+    with patch(f"{API}.validate", AsyncMock()), patch(f"{NR}.validate", AsyncMock()), \
+         patch(f"{API}.search_stops", AsyncMock(return_value=[])):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"nr_api_key": " good "})
+        assert result["step_id"] == "start"
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "search"})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"query": "London Bridge"})
+    assert result["step_id"] == "stops"
+    options = result["data_schema"].schema["stops"].config["options"]
+    assert options[0]["value"] == "NR:LBG"
+    assert "London Bridge (National Rail)" in options[0]["label"]
+    with patch("custom_components.london_dotmatrix.async_setup_entry", AsyncMock(return_value=True)):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"stops": ["NR:LBG"]})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "finish"})
+    assert result["data"] == {"api_key": "", "nr_api_key": "good"}
+    (sub_,) = result["result"].subentries.values()
+    assert sub_.data["stop_id"] == "NR:LBG" and sub_.data["modes"] == ["national-rail"]
+
+
+async def test_national_rail_sensor(hass: HomeAssistant, nr_board):
+    stop = {"id": "NR:LBG", "name": "London Bridge", "letter": "", "towards": "", "modes": ["national-rail"], "lines": []}
+    entry = MockConfigEntry(domain=DOMAIN, data={"api_key": "", "nr_api_key": "k"}, subentries_data=[sub(stop)])
+    entry.add_to_hass(hass)
+    with patch(f"{NR}.board", AsyncMock(return_value=nr_board)):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    state = hass.states.get("sensor.london_bridge_next_arrival")
+    assert state is not None, hass.states.async_entity_ids("sensor")
+    deps = state.attributes["departures"]
+    assert deps[0]["line_name"] == "Thameslink" and deps[0]["platform"] == "4"
+    assert deps[0]["calling_at"] == ["Blackfriars", "City Thameslink", "Farringdon"]
+    assert state.attributes["messages"] == ["Disruption between A and B."]
+
+
+async def test_national_rail_without_key(hass: HomeAssistant):
+    stop = {"id": "NR:LBG", "name": "London Bridge", "letter": "", "towards": "", "modes": ["national-rail"], "lines": []}
+    entry = MockConfigEntry(domain=DOMAIN, data={"api_key": ""}, subentries_data=[sub(stop)])
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.SETUP_RETRY

@@ -12,7 +12,7 @@ const cards = [
   ["dotmatrix-tube-card", "sensor.oxford_circus", "tube", {}],
   ["dotmatrix-bus-card", "sensor.oxford_circus_rc", "bus", {}],
   ["dotmatrix-rail-card", "sensor.stratford", "rail", {}],
-  ["dotmatrix-tube-card", "sensor.oxford_circus", "tube", { platform: "Northbound", title: "Victoria line north" }],
+  ["dotmatrix-rail-card", "sensor.london_bridge", "nr", {}],
 ];
 const states = {};
 for (const [, id, kind] of cards) states[id] = { entity_id: id, state: "1", attributes: attrs(kind) };

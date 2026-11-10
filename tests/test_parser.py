@@ -63,3 +63,27 @@ def test_line_status():
     ])
     assert status["victoria"]["severity"] == 9
     assert status["victoria"]["reason"] == "Victoria Line: Minor delays."
+
+
+def test_national_rail_board(nr_board):
+    from datetime import datetime, timezone
+
+    from custom_components.london_dotmatrix.national_rail import parse_board
+
+    parsed = parse_board(nr_board, datetime.fromtimestamp(NOW, timezone.utc))
+    deps = parsed["departures"]
+    assert [d["destination"] for d in deps] == ["Bedford", "Brighton", "Dartford via Greenwich"]
+    assert [d["status"] for d in deps] == ["On time", f"Exp {nr_board['trainServices'][0]['etd']}", "Cancelled"]
+    assert 23 * 60 <= deps[1]["expected"] - NOW <= 24 * 60 and deps[1]["reason"].startswith("This train has been delayed")
+    assert deps[0]["mode"] == "national-rail" and deps[0]["scheduled"] == nr_board["trainServices"][1]["std"]
+    assert parsed["messages"] == ["Disruption between A and B."]
+
+
+def test_national_rail_station_search():
+    from custom_components.london_dotmatrix.national_rail import load_stations, search_stations
+
+    load_stations()
+    assert search_stations("London Bridge")[0]["id"] == "NR:LBG"
+    assert search_stations("kgx")[0]["name"] == "London Kings Cross"
+    assert all(s["modes"] == ["national-rail"] for s in search_stations("Brighton"))
+    assert search_stations("zz") == []

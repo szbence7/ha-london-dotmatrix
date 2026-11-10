@@ -28,6 +28,21 @@ export function attrs(kind, now = Date.now() / 1000) {
     ],
     line_status: [],
   };
+  if (kind === "nr") {
+    const hhmm = (sec) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date((now + sec) * 1000));
+    const nr = (op, code, dest, plat, sec, status, calling = [], extra = {}) =>
+      ({ line: code, line_name: op, mode: "national-rail", destination: dest, platform: plat, direction: "", expected: Math.round(now + sec), scheduled: hhmm(sec), status, cancelled: status === "Cancelled", reason: "", calling_at: calling, minutes: Math.floor(sec / 60), color: "#1E3A8A", vehicle: "", location: "", ...extra });
+    return {
+      stop_id: "NR:LBG", stop_name: "London Bridge", letter: "", towards: "", modes: ["national-rail"], lines: [], line_status: [],
+      messages: ["Disruption between London Bridge and Peckham Rye. Some lines are blocked."],
+      departures: [
+        nr("Thameslink", "tl", "Bedford", "4", 120, "On time", ["Blackfriars", "City Thameslink", "Farringdon", "St Pancras International", "Luton Airport Parkway", "Luton", "Harlington", "Flitwick", "Bedford"]),
+        nr("Southern", "sn", "Brighton", "6", 420, `Exp ${hhmm(660)}`),
+        nr("Southeastern", "se", "Dartford via Greenwich", "", 900, "Cancelled"),
+        nr("Southeastern", "se", "Hayes", "1", 1100, "On time"),
+      ],
+    };
+  }
   return {
     stop_id: "910GSTFD", stop_name: "Stratford", letter: "", towards: "", modes: ["elizabeth-line", "overground"],
     lines: [{ id: "elizabeth", name: "Elizabeth line", mode: "elizabeth-line", color: "#6950A1" }, { id: "mildmay", name: "Mildmay", mode: "overground", color: "#0077AD" }],
