@@ -8,61 +8,67 @@
  * - the dim LED grid and every text strip (with its glow) are rendered once into offscreen
  *   canvases; a frame is only drawImage copies, and identical frames are skipped.
  */
-import { FONT_HEIGHT, GLYPHS } from "./font-data.js";
+import { FONT_DATA } from "./font-data.js";
 
-export const ROW = FONT_HEIGHT; // dot rows per text line (incl. the descender row)
+export const FONTS = FONT_DATA; // { lu, dm, dmTall }: { height, baseline, glyphs }
+export const fontHeight = (font = "lu") => FONTS[font].height;
+export const ROW = fontHeight("lu"); // dot rows of a Tube text line (incl. the descender row)
 const MARQUEE_GAP = 24; // blank dots between marquee repeats
 const SCROLL_PAUSE_MS = 1500; // marquee rests at its start, like the real boards
 const FALLBACK = "?";
 
 const CHAR_MAP = {
-  "‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-",
-  "•": ".", "·": ".", "…": "...", " ": " ", "→": ">", "←": "<",
+  "\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-",
+  "\u2022": ".", "\u00b7": ".", "\u2026": "...", "\u00a0": " ", "\u2192": ">", "\u2190": "<",
 };
 
 const glyphCache = new Map();
 
-function glyph(ch) {
-  let g = glyphCache.get(ch);
+function glyph(ch, font) {
+  const key = `${font}|${ch}`;
+  let g = glyphCache.get(key);
   if (g) return g;
-  let raw = GLYPHS[ch];
+  const { glyphs, height } = FONTS[font];
+  let raw = glyphs[ch];
   if (!raw) {
-    const mapped = CHAR_MAP[ch] ?? ch.normalize("NFD").replace(/[̀-ͯ]/g, "");
-    raw = mapped.length === 1 ? GLYPHS[mapped] : null;
+    const mapped = CHAR_MAP[ch] ?? ch.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    raw = mapped.length === 1 ? glyphs[mapped] || glyphs[mapped.toUpperCase()] : null;
     if (!raw && mapped.length > 1) {
-      g = textMatrix(mapped);
-      glyphCache.set(ch, g);
+      g = textMatrix(mapped, font);
+      g.width += 1;
+      glyphCache.set(key, g);
       return g;
     }
-    raw = raw || GLYPHS[FALLBACK];
+    raw = raw || glyphs[FALLBACK] || glyphs[" "];
   }
   const width = raw[0];
   const rows = [];
-  for (let r = 0; r < ROW; r++) {
+  for (let r = 0; r < height; r++) {
     const row = new Uint8Array(width);
     for (let c = 0; c < width; c++) row[c] = (raw[r + 1] >> c) & 1;
     rows.push(row);
   }
   g = { width, rows };
-  glyphCache.set(ch, g);
+  glyphCache.set(key, g);
   return g;
 }
 
-/** Text -> { width, rows[ROW] of Uint8Array } (proportional, glyphs carry their own spacing). */
-export function textMatrix(text) {
-  const glyphs = [...String(text ?? "")].map(glyph);
+/** Text -> { width, height, rows[height] of Uint8Array } (proportional, glyphs carry their own spacing). */
+export function textMatrix(text, font = "lu") {
+  const height = FONTS[font].height;
+  const glyphs = [...String(text ?? "")].map((ch) => glyph(ch, font));
   const width = glyphs.reduce((w, g) => w + g.width, 0);
-  const rows = Array.from({ length: ROW }, () => new Uint8Array(width));
+  const rows = Array.from({ length: height }, () => new Uint8Array(width));
   let x = 0;
   for (const g of glyphs) {
-    for (let r = 0; r < ROW; r++) rows[r].set(g.rows[r], x);
+    for (let r = 0; r < height; r++) rows[r].set(g.rows[r], x);
     x += g.width;
   }
   // the last glyph's trailing blank column is spacing, not ink
-  return { width: Math.max(0, width - (glyphs.length ? 1 : 0)), rows };
+  return { width: Math.max(0, width - (glyphs.length ? 1 : 0)), height, rows };
 }
 
-export const textWidth = (text) => textMatrix(text).width;
+export const textWidth = (text, font = "lu") => textMatrix(text, font).width;
 
 /**
  * Lay out one line of cells into `cols` dots.
@@ -70,12 +76,12 @@ export const textWidth = (text) => textMatrix(text).width;
  *         gap?: blank dots after the cell, color?, scroll?: false to clip instead of scrolling }
  */
 function layoutCells(cells, cols) {
-  const fixed = cells.reduce((sum, c) => sum + (c.flex ? 0 : c.w ?? textWidth(c.text)) + (c.gap || 0), 0);
+  const fixed = cells.reduce((sum, c) => sum + (c.flex ? 0 : c.w ?? textWidth(c.text, c.font)) + (c.gap || 0), 0);
   const flexCount = cells.filter((c) => c.flex).length || 1;
   const flexWidth = Math.max(0, Math.floor((cols - fixed) / flexCount));
   let x = 0;
   return cells.map((c) => {
-    const width = Math.max(0, Math.min(cols - x, c.flex ? flexWidth : c.w ?? textWidth(c.text)));
+    const width = Math.max(0, Math.min(cols - x, c.flex ? flexWidth : c.w ?? textWidth(c.text, c.font)));
     const out = { ...c, x, width };
     x += width + (c.gap || 0);
     return out;
@@ -148,15 +154,17 @@ export class Panel {
 
   _lineLayers(cells, old, t) {
     const placed = layoutCells(cells, this.cols);
+    const lineH = Math.max(0, ...cells.map((c) => fontHeight(c.font || "lu")));
     const layers = placed.map((cell, i) => {
       if (cell.width <= 0 || !cell.text) return null;
       const color = cell.color || this.style.color;
+      const font = cell.font || "lu";
       const prior = old?.layers?.[i];
       if (prior && prior.text === cell.text && prior.x === cell.x && prior.width === cell.width &&
-          prior.color === color && prior.align === (cell.align || "left")) {
+          prior.color === color && prior.align === (cell.align || "left") && prior.font === font) {
         return prior;
       }
-      const m = textMatrix(cell.text);
+      const m = textMatrix(cell.text, font);
       const scroll = m.width > cell.width && cell.scroll !== false;
       let offset = 0;
       if (!scroll) {
@@ -164,12 +172,13 @@ export class Panel {
         else if (cell.align === "center") offset = Math.max(0, Math.floor((cell.width - m.width) / 2));
       }
       return {
-        text: cell.text, x: cell.x, width: cell.width, color, align: cell.align || "left",
+        text: cell.text, x: cell.x, width: cell.width, color, align: cell.align || "left", font,
+        dy0: lineH - m.height, // bottom-align smaller fonts in a taller line
         matrix: m, length: scroll ? m.width + MARQUEE_GAP : m.width, offset, scroll,
         start: t, tileStart: -Infinity, bitmap: null,
       };
     });
-    return { layers };
+    return { layers, height: lineH };
   }
 
   _dotPath(cols, rows, test) {
@@ -194,16 +203,16 @@ export class Panel {
     return path;
   }
 
-  _strip(cols, test, color) {
+  _strip(cols, rows, test, color) {
     // 1 dot of margin above and below so the glow is not cut
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, cols * this.pp);
-    canvas.height = (ROW + 2) * this.pp;
+    canvas.height = (rows + 2) * this.pp;
     const ctx = canvas.getContext("2d");
     ctx.translate(0, this.pp);
     ctx.fillStyle = ctx.shadowColor = color;
     ctx.shadowBlur = this.pp * 0.9;
-    ctx.fill(this._dotPath(cols, ROW, test));
+    ctx.fill(this._dotPath(cols, rows, test));
     return canvas;
   }
 
@@ -251,7 +260,7 @@ export class Panel {
         delay = Math.min(delay, line.showMs - within);
       } else {
         // swipe up, one dot row at a time
-        const span = ROW;
+        const span = line.items[idx].height || ROW;
         const stepMs = line.transMs / span;
         const shift = Math.min(span, Math.floor((within - line.showMs) / stepMs) + 1);
         addLayers(line.items[idx].layers, line.y, -shift, true, itemStart);
@@ -296,7 +305,7 @@ export class Panel {
       if (!layer.bitmap || tileStart !== layer.tileStart) {
         const tileWidth = scroll ? width * 2 : width;
         const rows = matrix.rows;
-        layer.bitmap = this._strip(tileWidth, (col, row) => {
+        layer.bitmap = this._strip(tileWidth, matrix.height, (col, row) => {
           if (scroll) {
             const i = (tileStart + col) % length;
             return i < matrix.width && rows[row][i] === 1;
@@ -308,14 +317,15 @@ export class Panel {
       }
       const sx = (step - tileStart) * pp;
       const dx = this.offsetX + layer.x * pp;
-      const top = (y + dy - 1) * pp;
+      const h = matrix.height;
+      const top = (y + dy + (layer.dy0 || 0) - 1) * pp;
       if (clip) {
         ctx.save();
         ctx.beginPath();
-        ctx.rect(dx, y * pp, width * pp, ROW * pp);
+        ctx.rect(dx, y * pp, width * pp, (h + (layer.dy0 || 0)) * pp);
         ctx.clip();
       }
-      ctx.drawImage(layer.bitmap, sx, 0, width * pp, (ROW + 2) * pp, dx, top, width * pp, (ROW + 2) * pp);
+      ctx.drawImage(layer.bitmap, sx, 0, width * pp, (h + 2) * pp, dx, top, width * pp, (h + 2) * pp);
       if (clip) ctx.restore();
     }
   }

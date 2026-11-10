@@ -9,8 +9,8 @@ const PAD = 1;
 
 export function tubeTime(seconds) {
   if (seconds <= 30) return "Due";
-  const m = Math.round(seconds / 60);
-  return m <= 1 ? "1 min" : `${m} mins`;
+  // the platform indicators say "1 min", "3 min" (checked on platform photos)
+  return `${Math.max(1, Math.round(seconds / 60))} min`;
 }
 
 /** Real boards: 'Eastbound - Platform 2' -> group key + caption. */
