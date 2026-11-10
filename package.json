@@ -1,0 +1,16 @@
+{
+  "name": "ha-glowboard-london",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dot-matrix TfL departure boards for Home Assistant (cards source)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "font": "node frontend/scripts/build-font.cjs",
+    "build": "esbuild frontend/src/index.js --bundle --format=esm --target=es2021 --minify-syntax --minify-whitespace --legal-comments=inline --outfile=custom_components/glowboard_london/www/glowboard-cards.js",
+    "test": "node --test tests/cards.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

@@ -1,0 +1,210 @@
+# 🟧 Glowboard London
+
+**Live TfL arrivals in Home Assistant, on dot-matrix boards that look like the real thing.**
+
+Every TfL mode with live predictions: **Tube, buses, DLR, all six Overground lines, Elizabeth line, trams, river buses and the cable car**. One integration, three dashboard cards:
+
+| Card | Looks like |
+|---|---|
+| **Glowboard · Tube platform board** | the amber Underground platform indicator: two trains, the third row swiping through later trains, `STAND BACK - TRAIN APPROACHING`, service messages and the clock |
+| **Glowboard · Bus stop Countdown** | the bus stop Countdown sign: stop name and letter, route, destination, `due` / `3 min` |
+| **Glowboard · Rail departure board** | a station departure board for the DLR, Overground, Elizabeth line, trams, piers and the cable car: `1st / 2nd / 3rd`, header with the clock, disruptions |
+
+![Glowboard cards](images/dashboard.png)
+
+> Unofficial project, not affiliated with or endorsed by Transport for London. Powered by TfL Open Data.
+
+## Contents
+
+- [Features](#features)
+- [Install with HACS](#install-with-hacs)
+- [Set up](#set-up)
+- [Add the cards](#add-the-cards)
+- [Card options](#card-options)
+- [Sensors](#sensors)
+- [FAQ](#faq)
+
+## Features
+
+- ✅ **Works without an API key**: try it in 2 minutes; add a free TfL app key later for a much higher rate limit
+- ✅ **Live search while you type** in the card editor, with coloured line badges, stop letters and direction; one click adds the stop
+- ✅ **Interchanges are split up**: search "Stratford" and pick the Tube, the Elizabeth line / Overground station, the DLR or any bus stop
+- ✅ **One board per platform** on the Tube card (or pick one platform or one direction, e.g. *Northbound*)
+- ✅ **Disruption messages** from TfL line status scroll on the board
+- ✅ **Light on your Home Assistant**: no animation loop; the board only redraws when something changes, and stops completely when it is off screen or the tab is hidden
+- ✅ **The departure list is not written to the recorder database**
+- ✅ The real London Underground dot-matrix typeface, rendered LED by LED
+
+## Install with HACS
+
+1. **HACS → ⋮ (top right) → Custom repositories**
+2. Repository: `https://github.com/szbence7/ha-glowboard-london`, type: **Integration** → **Add**
+3. Search for **Glowboard London** → **Download**
+4. **Restart Home Assistant** (Settings → System → Restart)
+
+The three cards come with the integration: no separate frontend download. The card resource is added to your dashboards automatically.
+
+## Set up
+
+**Settings → Devices & services → Add integration → Glowboard London**
+
+### 1/2 · TfL app key (optional)
+
+You can leave it empty. Without a key TfL only allows a few requests per minute, which is fine for one or two stops. For more stops get a free key (2 minutes):
+
+1. Open [api-portal.tfl.gov.uk](https://api-portal.tfl.gov.uk) and **Sign up**
+2. **Products** → subscribe to **500 Requests per min** (free)
+3. **Profile** → copy the **Primary key** and paste it in
+
+The key is stored only in your Home Assistant. You can add, change or remove it later: **Glowboard London → ⋮ → Reconfigure**.
+
+### 2/2 · Stops
+
+- **A) Easiest: later, in the card editor ⭐** Pick *Later, from the card editor*, add a Glowboard card to your dashboard and start typing a station or stop name. Results appear while you type; click one and it is added.
+- **B) Right now:** pick *Search for a stop now*, type a name, tick one or more stops.
+
+Every stop becomes a device with one sensor.
+
+![Card editor with live search](images/editor.png)
+
+### Later
+
+| What | How |
+|---|---|
+| Add a stop | from any card editor, or **+ Add stop** on the integration page |
+| Remove a stop | ⋮ on the stop's row → **Delete** |
+| Update interval, departures kept | the ⚙️ cog on the integration |
+| App key | ⋮ → **Reconfigure** |
+
+## Add the cards
+
+Edit your dashboard → **Add card** → search for **Glowboard**. Choose a card, search for the stop in the editor, done.
+
+```yaml
+type: custom:glowboard-tube-card
+entity: sensor.oxford_circus_next_arrival
+platform: Northbound        # optional: one platform, or a direction
+```
+
+```yaml
+type: custom:glowboard-bus-card
+entity: sensor.oxford_circus_station_stop_rc_next_arrival
+rows: 4
+```
+
+```yaml
+type: custom:glowboard-rail-card
+entity: sensor.stratford_next_arrival
+lines: [elizabeth]
+group_by_platform: true
+```
+
+On phones the boards shrink their LEDs to keep a full line visible:
+
+<img src="images/mobile.png" width="360" alt="Glowboard on a phone">
+
+## Card options
+
+All options are in the visual editor; the YAML names are below.
+
+| Option | Cards | Default | What it does |
+|---|---|---|---|
+| `entity` | all | | the stop's sensor |
+| `title` | all | stop name | text above the board |
+| `platform` | tube, rail | every platform | exact platform (`Eastbound - Platform 2`) or part of it (`Eastbound`, `Platform 5`) |
+| `lines` | all | all | only these lines / routes, e.g. `[central]`, `["25", "n25"]` |
+| `color` | all | amber | LED colour (any hex colour) |
+| `rows` | bus, rail | 4 / 3 | departures on the board |
+| `max_boards` | tube, rail | 4 | most boards shown (one per platform) |
+| `stand_back` | tube | `true` | `STAND BACK - TRAIN APPROACHING` when the next train is due |
+| `show_status` | all | `true` (bus: `false`) | scroll TfL disruption messages |
+| `show_clock` | all | `true` | clock (always London time) |
+| `show_platform` | tube | `true` | platform caption above each board |
+| `show_header` | bus, rail | `true` | header row on the board |
+| `group_by_platform` | rail | `false` | one board per platform |
+| `show_line` | rail | `false` | line name on every row |
+| `header` | rail | platform or line | custom header text |
+| `scroll_speed` | all | 22 | dots per second for long texts |
+| `columns` | all | automatic | LEDs per row (fixed resolution) |
+| `dot_shape` | all | round (bus: square) | `round` or `square` LEDs |
+| `background` | all | `true` | black board with a bezel |
+| `show_attribution` | all | `true` | the small *Powered by TfL Open Data* line |
+
+## Sensors
+
+One sensor per stop, e.g. `sensor.oxford_circus_next_arrival`
+
+- **State:** minutes until the next arrival
+- **Attributes:** the whole board
+
+```yaml
+stop_id: 940GZZLUOXC
+stop_name: Oxford Circus
+letter: ""            # bus stop letter, e.g. RC
+towards: ""           # bus stop direction
+modes: [tube]
+departures:
+  - line: central
+    line_name: Central
+    mode: tube
+    destination: Hainault via Newbury Park
+    platform: Eastbound - Platform 2
+    direction: outbound
+    expected: 1794300030   # unix time
+    minutes: 0
+    color: "#E32017"
+line_status:
+  - line: victoria
+    severity: 9
+    description: Minor Delays
+    reason: "Victoria Line: Minor delays due to train cancellations."
+```
+
+Automation idea: a notification when your bus is 5 minutes away.
+
+```yaml
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.oxford_circus_station_stop_rc_next_arrival
+    below: 6
+action:
+  - action: notify.mobile_app_my_phone
+    data:
+      message: >
+        {% set d = state_attr(trigger.entity_id, 'departures')[0] %}
+        {{ d.line_name }} to {{ d.destination }} in {{ states(trigger.entity_id) }} min
+```
+
+## FAQ
+
+**"Cannot reach TfL / rate limit".** Without an app key TfL allows only a few requests per minute. Add a free key (see above) or raise the update interval.
+
+**National Rail trains are missing.** TfL only predicts its own services. National Rail (e.g. c2c, Southern) needs the separate Darwin feed and is not covered.
+
+**I can't find my bus stop.** Type the stop name as written on the stop (e.g. *Brixton Station*) and look for the right letter and direction. Bus stations expand into all their stops.
+
+**My platform shows "Departures" or no platform.** Some stations (mostly Overground and Elizabeth line) do not always send a platform. Use the rail card without `group_by_platform`.
+
+**How much does it load TfL and HA?** One request per stop per update (30 s by default), plus line status at most every 2 minutes, shared by all stops. On the dashboard each card redraws only when its content changes.
+
+## Credits
+
+- Data: [TfL Unified API](https://api.tfl.gov.uk). Powered by TfL Open Data. Contains OS data © Crown copyright and database rights.
+- Typeface: [London Underground dot-matrix typeface](https://github.com/petykowski/London-Underground-Dot-Matrix-Typeface) by petykowski, SIL Open Font License 1.1 ([licence](frontend/fonts/OFL-LICENSE.txt)), rendered into LED bitmaps.
+- Not affiliated with Transport for London. "Underground" and "Overground" are used only to describe the services.
+
+## Development
+
+```bash
+npm install
+npm run font    # only if the typeface changes (needs Playwright)
+npm run build   # frontend/src -> custom_components/glowboard_london/www/glowboard-cards.js
+npm test        # card logic
+pip install pytest-homeassistant-custom-component && pytest   # integration
+```
+
+## Support
+
+If it saves you a sprint for the train, you can buy me a coffee. Thank you! ☕
+
+<a href="https://www.buymeacoffee.com/benceix"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=benceix&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee"></a>
