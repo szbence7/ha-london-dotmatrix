@@ -26,7 +26,7 @@ export function attrs(kind, now = Date.now() / 1000) {
       dep("94", "94", "bus", "Piccadilly Circus", "", 610, "#DC241F"),
       dep("n3", "N3", "bus", "Bromley North", "", 1300, "#DC241F"),
     ],
-    line_status: [],
+    line_status: [{ line: "12", name: "12", severity: 0, description: "Special Service", reason: "HAYMARKET, SW1: Route 12 is diverted via Regent Street." }],
   };
   if (kind === "nr") {
     const hhmm = (sec) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date((now + sec) * 1000));

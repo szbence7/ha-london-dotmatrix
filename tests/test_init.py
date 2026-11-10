@@ -169,7 +169,7 @@ async def test_frontend_resource_registered(hass: HomeAssistant, tube_arrivals, 
 
     resources = hass.data[LOVELACE_DATA].resources
     urls = [r["url"] for r in resources.async_items()]
-    assert urls == ["/london_dotmatrix/dotmatrix-cards.js?v=0.2.0"]
+    assert len(urls) == 1 and urls[0].startswith("/london_dotmatrix/dotmatrix-cards.js?v=0.2.0-")
 
 
 NR = "custom_components.london_dotmatrix.national_rail.NationalRailApi"
