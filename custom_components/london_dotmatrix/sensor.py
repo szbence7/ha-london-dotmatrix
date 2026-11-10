@@ -34,6 +34,7 @@ MODE_ICON = {
     "tram": "mdi:tram",
     "river-bus": "mdi:ferry",
     "cable-car": "mdi:gondola",
+    "national-rail": "mdi:train",
 }
 
 
@@ -56,7 +57,7 @@ class NextArrivalSensor(CoordinatorEntity[StopCoordinator], SensorEntity):
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
     _attr_attribution = ATTRIBUTION
     # The board changes every poll: keep it out of the recorder database.
-    _unrecorded_attributes = frozenset({"departures", "line_status", "lines"})
+    _unrecorded_attributes = frozenset({"departures", "line_status", "lines", "messages"})
 
     def __init__(self, coordinator: StopCoordinator) -> None:
         super().__init__(coordinator)
@@ -69,7 +70,7 @@ class NextArrivalSensor(CoordinatorEntity[StopCoordinator], SensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.stop_id)},
             name=coordinator.subentry.title or coordinator.stop_name,
-            manufacturer="TfL open data (unofficial)",
+            manufacturer="National Rail open data (unofficial)" if coordinator.stop_id.startswith("NR:") else "TfL open data (unofficial)",
             model=" · ".join(
                 x
                 for x in (
@@ -108,4 +109,5 @@ class NextArrivalSensor(CoordinatorEntity[StopCoordinator], SensorEntity):
             "lines": data.get(CONF_LINES, []),
             "departures": self._departures[:limit],
             "line_status": list(status.values()),
+            "messages": (self.coordinator.data or {}).get("messages", []),
         }

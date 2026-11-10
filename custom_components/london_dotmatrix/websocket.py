@@ -18,8 +18,9 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 
 from .api import TflError
-from .config_flow import stop_subentry
+from .config_flow import search_all, stop_subentry
 from .const import DOMAIN, SUBENTRY_STOP
+from .national_rail import crs_of, is_nr_stop, load_stations, search_stations
 
 CACHE_KEY = f"{DOMAIN}_search_cache"
 MAX_RESULTS = 40
@@ -62,7 +63,7 @@ async def ws_search(hass: HomeAssistant, connection: websocket_api.ActiveConnect
         connection.send_result(msg["id"], {"stops": []})
         return
     try:
-        stops = await entry.runtime_data.api.search_stops(query)
+        stops = await search_all(hass, entry.runtime_data.api, query, entry.runtime_data.nr is not None)
     except TflError as err:
         connection.send_error(msg["id"], "api_error", str(err))
         return
@@ -90,6 +91,9 @@ async def ws_add_stop(hass: HomeAssistant, connection: websocket_api.ActiveConne
     stop_id = msg["stop_id"]
     if stop_id not in {s.unique_id for s in entry.subentries.values()}:
         stop = hass.data.get(CACHE_KEY, {}).get(stop_id)
+        if stop is None and is_nr_stop(stop_id):
+            await hass.async_add_executor_job(load_stations)
+            stop = next((s for s in search_stations(crs_of(stop_id)) if s["id"] == stop_id), None)
         if stop is None:
             try:
                 stop = await entry.runtime_data.api.stop_details(stop_id)

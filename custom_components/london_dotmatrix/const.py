@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 DOMAIN = "london_dotmatrix"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 API_BASE = "https://api.tfl.gov.uk"
 API_KEY_URL = "https://api-portal.tfl.gov.uk"
+NR_KEY_URL = "https://raildata.org.uk"
+
+CONF_NR_KEY = "nr_api_key"
 
 CONF_STOP_ID = "stop_id"
 CONF_STOP_NAME = "stop_name"
@@ -51,6 +54,7 @@ MODE_NAMES = {
     "tram": "Tram",
     "river-bus": "River Bus",
     "cable-car": "Cable Car",
+    "national-rail": "National Rail",
 }
 
 MODE_ICONS = {
@@ -62,11 +66,12 @@ MODE_ICONS = {
     "tram": "🚊",
     "river-bus": "⛴️",
     "cable-car": "🚡",
+    "national-rail": "🚉",
 }
 
 # Mode order used to sort search results (stations before bus stops).
 MODE_ORDER = {mode: i for i, mode in enumerate(
-    ("tube", "elizabeth-line", "overground", "dlr", "tram", "cable-car", "river-bus", "bus")
+    ("tube", "elizabeth-line", "overground", "dlr", "national-rail", "tram", "cable-car", "river-bus", "bus")
 )}
 
 MODE_COLORS = {
@@ -78,6 +83,7 @@ MODE_COLORS = {
     "tram": "#5FB526",
     "river-bus": "#0099CC",
     "cable-car": "#E21836",
+    "national-rail": "#1E3A8A",
 }
 
 LINE_COLORS = {

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
@@ -16,13 +16,16 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import TflApi, TflAuthError, TflError
 from .const import (
     CONF_LINES,
+    CONF_MAX_DEPARTURES,
     CONF_SCAN_INTERVAL,
     CONF_STOP_ID,
     CONF_STOP_NAME,
+    DEFAULT_MAX_DEPARTURES,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     STATUS_TTL,
 )
+from .national_rail import NationalRailApi, crs_of, is_nr_stop, parse_board
 from .parser import parse_arrivals
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +60,7 @@ class RuntimeData:
 
     api: TflApi
     status: StatusCache
+    nr: NationalRailApi | None = None
     coordinators: dict[str, "StopCoordinator"] = field(default_factory=dict)
 
 
@@ -75,6 +79,7 @@ class StopCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         subentry: ConfigSubentry,
         api: TflApi,
         status: StatusCache,
+        nr: NationalRailApi | None = None,
     ) -> None:
         interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         super().__init__(
@@ -86,11 +91,14 @@ class StopCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.api = api
         self.status = status
+        self.nr = nr
         self.subentry = subentry
         self.stop_id: str = subentry.data[CONF_STOP_ID]
         self.stop_name: str = subentry.data.get(CONF_STOP_NAME) or self.stop_id
 
     async def _async_update_data(self) -> dict[str, Any]:
+        if is_nr_stop(self.stop_id):
+            return await self._national_rail()
         try:
             raw = await self.api.arrivals(self.stop_id)
             departures = parse_arrivals(raw, time.time())
@@ -108,3 +116,17 @@ class StopCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except TflError as err:
             raise UpdateFailed(f"Error fetching arrivals: {err}") from err
         return {"departures": departures, "status": status}
+
+    async def _national_rail(self) -> dict[str, Any]:
+        """National Rail station: Darwin departure board (needs the Rail Data Marketplace key)."""
+        if self.nr is None:
+            raise UpdateFailed("Add your National Rail (Rail Data Marketplace) key: integration ⋮ → Reconfigure")
+        limit = self.config_entry.options.get(CONF_MAX_DEPARTURES, DEFAULT_MAX_DEPARTURES)
+        try:
+            board = await self.nr.board(crs_of(self.stop_id), min(max(limit, 5), 25))
+        except TflAuthError as err:
+            raise ConfigEntryAuthFailed("National Rail key rejected") from err
+        except TflError as err:
+            raise UpdateFailed(f"Error fetching National Rail departures: {err}") from err
+        parsed = parse_board(board, datetime.now(timezone.utc))
+        return {"departures": parsed["departures"], "status": {}, "messages": parsed["messages"]}

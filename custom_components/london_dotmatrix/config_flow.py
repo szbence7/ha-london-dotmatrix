@@ -38,8 +38,11 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import TflApi, TflAuthError, TflConnectionError, TflError
+from .national_rail import NationalRailApi, load_stations, search_stations
+from .parser import sort_stops
 from .const import (
     API_KEY_URL,
+    CONF_NR_KEY,
     CONF_LETTER,
     CONF_LINES,
     CONF_MAX_DEPARTURES,
@@ -56,11 +59,12 @@ from .const import (
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
     MODE_ICONS,
+    NR_KEY_URL,
     SUBENTRY_STOP,
 )
 
 MAX_RESULTS = 40
-PLACEHOLDERS = {"url": API_KEY_URL}
+PLACEHOLDERS = {"url": API_KEY_URL, "nr_url": NR_KEY_URL}
 ENTRY_TITLE = "TfL live arrivals"
 
 
@@ -71,8 +75,10 @@ def lines_text(stop: dict[str, Any], limit: int = 8) -> str:
 
 
 def stop_title(stop: dict[str, Any]) -> str:
-    """'Oxford Circus' / 'Oxford Circus Station (Stop RC)' (also the device and entity name)."""
+    """'Oxford Circus' / 'Oxford Circus Station (Stop RC)' / 'London Bridge (National Rail)'."""
     title = stop["name"]
+    if "national-rail" in (stop.get("modes") or []):
+        return f"{title} (National Rail)"
     if stop.get("letter"):
         title += f" (Stop {stop['letter']})"
     return title
@@ -84,6 +90,8 @@ def stop_label(stop: dict[str, Any]) -> str:
     label = f"{icons} {stop_title(stop)}"
     if stop.get("towards") and "bus" in (stop.get("modes") or []):
         label += f" → {stop['towards']}"
+    if stop.get("crs"):
+        label += f" · {stop['crs']}"
     lines = lines_text(stop)
     return label + (f"      {lines}" if lines else "")
 
@@ -104,26 +112,56 @@ def stop_subentry(stop: dict[str, Any]) -> ConfigSubentryData:
     )
 
 
-async def validate_key(hass: HomeAssistant, api_key: str) -> str | None:
-    """Return an error key, or None if TfL answers (with this key, if given)."""
+async def validate_keys(hass: HomeAssistant, api_key: str, nr_key: str) -> dict[str, str]:
+    """Errors per field ({} when TfL answers with this key and the National Rail key works)."""
+    session = async_get_clientsession(hass)
     try:
-        await TflApi(async_get_clientsession(hass), api_key).validate()
+        await TflApi(session, api_key).validate()
     except TflAuthError:
-        return "invalid_auth"
+        return {CONF_API_KEY: "invalid_auth"}
     except TflConnectionError:
-        return "cannot_connect"
+        return {"base": "cannot_connect"}
     except TflError:
-        return "unknown"
-    return None
+        return {"base": "unknown"}
+    if nr_key:
+        try:
+            await NationalRailApi(session, nr_key).validate()
+        except TflAuthError:
+            return {CONF_NR_KEY: "invalid_nr_auth"}
+        except TflConnectionError:
+            return {CONF_NR_KEY: "nr_cannot_connect"}
+        except TflError:
+            return {CONF_NR_KEY: "nr_cannot_connect"}
+    return {}
 
 
-async def search(hass: HomeAssistant, api_key: str, query: str) -> tuple[list[dict[str, Any]], dict[str, str]]:
+async def search_all(
+    hass: HomeAssistant, api: TflApi, query: str, with_national_rail: bool
+) -> list[dict[str, Any]]:
+    """TfL stops + (with a National Rail key) National Rail stations, stations first."""
+    stops: list[dict[str, Any]] = []
+    tfl_error: TflError | None = None
+    try:
+        stops = await api.search_stops(query)
+    except TflError as err:
+        tfl_error = err
+    if with_national_rail:
+        await hass.async_add_executor_job(load_stations)
+        stops += search_stations(query)
+    if tfl_error and not stops:
+        raise tfl_error
+    return sort_stops(stops, query)
+
+
+async def search(
+    hass: HomeAssistant, api_key: str, nr_key: str, query: str
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
     """Search stops; returns (results, errors)."""
     query = query.strip()
     if len(query) < 3:
         return [], {CONF_QUERY: "query_too_short"}
     try:
-        stops = await TflApi(async_get_clientsession(hass), api_key).search_stops(query)
+        stops = await search_all(hass, TflApi(async_get_clientsession(hass), api_key), query, bool(nr_key))
     except TflAuthError:
         return [], {"base": "invalid_auth"}
     except TflConnectionError:
@@ -135,10 +173,19 @@ async def search(hass: HomeAssistant, api_key: str, query: str) -> tuple[list[di
     return stops[:MAX_RESULTS], {}
 
 
-def key_schema() -> vol.Schema:
+def key_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    d = defaults or {}
+    password = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
     return vol.Schema(
-        {vol.Optional(CONF_API_KEY, default=""): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))}
+        {
+            vol.Optional(CONF_API_KEY, default=d.get(CONF_API_KEY, "")): password,
+            vol.Optional(CONF_NR_KEY, default=d.get(CONF_NR_KEY, "")): password,
+        }
     )
+
+
+def keys_from(user_input: dict[str, Any]) -> tuple[str, str]:
+    return (user_input.get(CONF_API_KEY) or "").strip(), (user_input.get(CONF_NR_KEY) or "").strip()
 
 
 def search_schema() -> vol.Schema:
@@ -164,6 +211,7 @@ class DotmatrixConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._api_key: str = ""
+        self._nr_key: str = ""
         self._results: dict[str, dict[str, Any]] = {}
         self._selected: dict[str, dict[str, Any]] = {}
 
@@ -178,14 +226,13 @@ class DotmatrixConfigFlow(ConfigFlow, domain=DOMAIN):
         return DotmatrixOptionsFlow()
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Step 1: optional TfL app_key."""
+        """Step 1: optional TfL app key and optional National Rail key."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            api_key = (user_input.get(CONF_API_KEY) or "").strip()
-            if not (error := await validate_key(self.hass, api_key)):
-                self._api_key = api_key
+            api_key, nr_key = keys_from(user_input)
+            if not (errors := await validate_keys(self.hass, api_key, nr_key)):
+                self._api_key, self._nr_key = api_key, nr_key
                 return await self.async_step_start()
-            errors["base"] = error
         return self.async_show_form(
             step_id="user", data_schema=key_schema(), errors=errors, description_placeholders=PLACEHOLDERS
         )
@@ -197,7 +244,7 @@ class DotmatrixConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_search(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            stops, errors = await search(self.hass, self._api_key, user_input[CONF_QUERY])
+            stops, errors = await search(self.hass, self._api_key, self._nr_key, user_input[CONF_QUERY])
             if not errors:
                 self._results = {s["id"]: s for s in stops}
                 return await self.async_step_stops()
@@ -231,7 +278,7 @@ class DotmatrixConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_finish(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_create_entry(
             title=ENTRY_TITLE,
-            data={CONF_API_KEY: self._api_key},
+            data={CONF_API_KEY: self._api_key, CONF_NR_KEY: self._nr_key},
             subentries=[stop_subentry(s) for s in self._selected.values()],
         )
 
@@ -246,29 +293,35 @@ class DotmatrixConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """The stored key was rejected: ask for a new one (or none)."""
         errors: dict[str, str] = {}
+        entry = self._get_reauth_entry()
         if user_input is not None:
-            api_key = (user_input.get(CONF_API_KEY) or "").strip()
-            if not (error := await validate_key(self.hass, api_key)):
+            api_key, nr_key = keys_from(user_input)
+            if not (errors := await validate_keys(self.hass, api_key, nr_key)):
                 return self.async_update_reload_and_abort(
-                    self._get_reauth_entry(), data_updates={CONF_API_KEY: api_key}
+                    entry, data_updates={CONF_API_KEY: api_key, CONF_NR_KEY: nr_key}
                 )
-            errors["base"] = error
         return self.async_show_form(
-            step_id="reauth_confirm", data_schema=key_schema(), errors=errors, description_placeholders=PLACEHOLDERS
+            step_id="reauth_confirm",
+            data_schema=key_schema(dict(entry.data)),
+            errors=errors,
+            description_placeholders=PLACEHOLDERS,
         )
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Add, change or remove the app_key."""
         errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
         if user_input is not None:
-            api_key = (user_input.get(CONF_API_KEY) or "").strip()
-            if not (error := await validate_key(self.hass, api_key)):
+            api_key, nr_key = keys_from(user_input)
+            if not (errors := await validate_keys(self.hass, api_key, nr_key)):
                 return self.async_update_reload_and_abort(
-                    self._get_reconfigure_entry(), data_updates={CONF_API_KEY: api_key}
+                    entry, data_updates={CONF_API_KEY: api_key, CONF_NR_KEY: nr_key}
                 )
-            errors["base"] = error
         return self.async_show_form(
-            step_id="reconfigure", data_schema=key_schema(), errors=errors, description_placeholders=PLACEHOLDERS
+            step_id="reconfigure",
+            data_schema=key_schema(dict(entry.data)),
+            errors=errors,
+            description_placeholders=PLACEHOLDERS,
         )
 
 
@@ -282,7 +335,9 @@ class StopSubentryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             entry = self._get_entry()
-            stops, errors = await search(self.hass, entry.data.get(CONF_API_KEY, ""), user_input[CONF_QUERY])
+            stops, errors = await search(
+                self.hass, entry.data.get(CONF_API_KEY, ""), entry.data.get(CONF_NR_KEY, ""), user_input[CONF_QUERY]
+            )
             if not errors:
                 existing = {s.unique_id for s in entry.subentries.values()}
                 self._results = {s["id"]: s for s in stops if s["id"] not in existing}

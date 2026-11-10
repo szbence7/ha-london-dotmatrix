@@ -13,7 +13,8 @@ from homeassistant.helpers.typing import ConfigType
 
 from . import websocket
 from .api import TflApi
-from .const import DOMAIN, SUBENTRY_STOP
+from .national_rail import NationalRailApi, load_stations
+from .const import CONF_NR_KEY, DOMAIN, SUBENTRY_STOP
 from .coordinator import DotmatrixConfigEntry, RuntimeData, StatusCache, StopCoordinator
 from .frontend import async_setup_frontend
 
@@ -25,18 +26,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Serve the cards and register the websocket commands used by the card editors."""
     await async_setup_frontend(hass)
     websocket.async_register(hass)
+    await hass.async_add_executor_job(load_stations)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: DotmatrixConfigEntry) -> bool:
     """Set up the API connection and one coordinator per stop."""
-    api = TflApi(async_get_clientsession(hass), entry.data.get(CONF_API_KEY))
-    runtime = RuntimeData(api=api, status=StatusCache(api))
+    session = async_get_clientsession(hass)
+    api = TflApi(session, entry.data.get(CONF_API_KEY))
+    nr_key = (entry.data.get(CONF_NR_KEY) or "").strip()
+    nr = NationalRailApi(session, nr_key) if nr_key else None
+    runtime = RuntimeData(api=api, status=StatusCache(api), nr=nr)
 
     for subentry in entry.subentries.values():
         if subentry.subentry_type != SUBENTRY_STOP:
             continue
-        coordinator = StopCoordinator(hass, entry, subentry, api, runtime.status)
+        coordinator = StopCoordinator(hass, entry, subentry, api, runtime.status, nr)
         await coordinator.async_config_entry_first_refresh()
         runtime.coordinators[subentry.subentry_id] = coordinator
 
