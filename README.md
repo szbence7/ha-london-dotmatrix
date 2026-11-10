@@ -108,6 +108,8 @@ Then search for a station by name or CRS code (e.g. *London Bridge* or *LBG*) in
 
 Edit your dashboard → **Add card** → search for **Dotmatrix**. Choose a card, search for the stop in the editor, done.
 
+On Home Assistant 2026.6 or newer you can also start from the stop: **Add card → By entity**, pick a stop sensor, and the matching Dotmatrix card is offered in the **Community** suggestions.
+
 ```yaml
 type: custom:dotmatrix-tube-card
 entity: sensor.oxford_circus_next_arrival
