@@ -270,7 +270,7 @@ export class DotmatrixCard extends HTMLElement {
       const title = this._config.show_title === false ? "" : this._config.title || model.title || "";
       if (this._titleEl.textContent !== title) this._titleEl.textContent = title;
       const nr = (this._state?.attributes?.modes || []).includes("national-rail");
-      const credit = this._config.show_attribution === false ? ""
+      const credit = this._config.show_attribution !== true ? ""
         : nr ? "Powered by National Rail Enquiries" : "Powered by TfL Open Data";
       if (this._attributionEl.textContent !== credit) this._attributionEl.textContent = credit;
       this._syncPanels(model, geo);

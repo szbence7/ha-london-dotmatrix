@@ -30,7 +30,7 @@ const LABELS = {
   show_line: "Line / operator name on each row",
   show_calling_at: "National Rail: calling points under the first train",
   background: "Black board with bezel",
-  show_attribution: "“Powered by TfL Open Data”",
+  show_attribution: "Data source line under the board",
   empty_text: "Text when nothing is due",
 };
 
