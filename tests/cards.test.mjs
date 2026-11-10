@@ -13,7 +13,8 @@ const { cardEntities } = await import("../frontend/src/editor.js");
 test("glyph matrix is 10 dots high and proportional", () => {
   const m = textMatrix("Hi");
   assert.equal(m.rows.length, ROW);
-  assert.equal(m.width, 7 + 2 - 1);
+  assert.equal(m.height, 11);
+  assert.equal(textMatrix("Hi", "dm").height, 9);
   assert.equal(textMatrix("é").width, textMatrix("e").width); // accents fall back to the base letter
   assert.ok(textMatrix("King’s Cross St. Pancras").width > 0);
 });
@@ -21,9 +22,9 @@ test("glyph matrix is 10 dots high and proportional", () => {
 test("tube and bus time formats", () => {
   assert.equal(tubeTime(25), "Due");
   assert.equal(tubeTime(70), "1 min");
-  assert.equal(tubeTime(160), "3 mins");
+  assert.equal(tubeTime(160), "3 min");
   assert.equal(busTime(40), "due");
-  assert.equal(busTime(190), "3 min");
+  assert.equal(busTime(190), "3min");
 });
 
 test("filters by platform direction and line", () => {
