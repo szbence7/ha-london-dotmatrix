@@ -15,7 +15,8 @@ const LABELS = {
   platform: "Platform (empty: every platform)",
   lines: "Only these lines / routes (empty: all)",
   color: "LED colour",
-  rows: "Departure rows",
+  rows: "Rows on the board",
+  departures: "Buses shown (the rows below the first one page through them)",
   max_boards: "Max. boards (one per platform)",
   scroll_speed: "Scroll speed (dots/s)",
   columns: "Dots per row (empty: automatic)",
@@ -87,7 +88,7 @@ function schema(cardType, attrs, entities) {
 
   if (cardType === "dotmatrix-bus-card") {
     return [entity, { name: "title", selector: { text: {} } }, lines,
-      grid(num("rows", 1, 12), color, num("scroll_speed", 5, 60), num("columns", 80, 400, 10), shape, { name: "empty_text", selector: { text: {} } }),
+      grid(num("rows", 1, 8), num("departures", 1, 20), color, num("scroll_speed", 5, 60), num("columns", 80, 400, 10), shape, { name: "empty_text", selector: { text: {} } }),
       grid(bool("show_title"), bool("show_header"), bool("show_clock"), bool("show_status"), bool("background"), bool("show_attribution")),
     ].filter(Boolean);
   }

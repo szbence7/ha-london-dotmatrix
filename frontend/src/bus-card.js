@@ -20,34 +20,43 @@ export class DotmatrixBusCard extends DotmatrixCard {
   static idealColumns = 160;
   static emptyText = "Select a bus stop";
   static defaults = {
-    color: "#ff3a1f",
-    rows: 4,
+    color: "#ff8a00",
+    rows: 3,
+    departures: 5,
     show_title: true,
     show_header: false,
     show_clock: false,
-    show_status: false,
+    show_status: true,
     scroll_speed: 22,
     background: true,
     show_attribution: false,
     dot_shape: "round",
-    empty_text: "NO BUSES DUE",
+    empty_text: "No buses due",
   };
 
-  /* Countdown sign (checked against stop photos): red LEDs, 5x7 capitals,
-   * "1  31  CAMDEN TOWN   due" / "3 328  GOLDERS GREEN  2min". */
+  /* Countdown sign: amber LEDs, 5x7 font, "1  31  Camden Town  due".
+   * Like the real signs, the first bus stays put and the rows below page through the later
+   * buses with a swipe-up ("2, 3" -> "4, 5" -> "2, 3" …). */
   _buildModel(attrs, now) {
     const c = this._config;
     const deps = filterDepartures(attrs, c, now);
-    const count = Math.max(1, Math.min(12, Number(c.rows) || 4));
-    const shown = deps.slice(0, count);
+    const rows = Math.max(1, Math.min(8, Number(c.rows) || 3));
+    const total = Math.max(rows, Math.min(20, Number(c.departures) || 5));
+    const shown = deps.slice(0, total);
     const idxW = textWidth(String(Math.max(1, shown.length)));
-    const routeW = Math.max(textWidth("888"), ...shown.map((d) => textWidth(String(d.line_name).toUpperCase())));
+    const routeW = Math.max(textWidth("888"), ...shown.map((d) => textWidth(String(d.line_name))));
     const timeW = Math.max(textWidth("88min"), ...shown.map((d) => textWidth(busTime(secondsTo(d, now)))));
     const lines = [];
     const cell = (o) => ({ font: FONT, ...o });
+    const row = (d, i) => [
+      cell({ text: String(i + 1), w: idxW, gap: 4 }),
+      cell({ text: String(d.line_name), w: routeW, align: "right", gap: 6 }),
+      cell({ text: String(d.destination), flex: true, gap: 4 }),
+      cell({ text: busTime(secondsTo(d, now)), w: timeW, align: "right" }),
+    ];
     let y = PAD;
     if (c.show_header) {
-      const name = (attrs.letter ? `${attrs.stop_name}  ${attrs.letter}` : attrs.stop_name || "").toUpperCase();
+      const name = attrs.letter ? `${attrs.stop_name}  ${attrs.letter}` : attrs.stop_name || "";
       const cells = [cell({ text: name, flex: true, gap: 4 })];
       if (c.show_clock) cells.push(cell({ text: londonClock(now, false), align: "right" }));
       lines.push({ y, cells });
@@ -56,22 +65,27 @@ export class DotmatrixBusCard extends DotmatrixCard {
     if (!shown.length) {
       lines.push({ y, cells: [cell({ text: c.empty_text || "", flex: true, align: "center" })] });
       y += ROW + GAP;
-    }
-    shown.forEach((d, i) => {
-      lines.push({
-        y,
-        cells: [
-          cell({ text: String(i + 1), w: idxW, gap: 4 }),
-          cell({ text: String(d.line_name).toUpperCase(), w: routeW, align: "right", gap: 6 }),
-          cell({ text: String(d.destination).toUpperCase(), flex: true, gap: 4 }),
-          cell({ text: busTime(secondsTo(d, now)), w: timeW, align: "right" }),
-        ],
-      });
+    } else {
+      // first bus fixed
+      lines.push({ y, cells: row(shown[0], 0) });
       y += ROW + GAP;
-    });
-    const message = c.show_status ? statusText(attrs, [...new Set(shown.map((d) => d.line))]) : "";
+      // the other rows page through the rest, in step (same timing for every row)
+      const rest = shown.slice(1);
+      const per = rows - 1;
+      const pages = Math.max(1, Math.ceil(rest.length / Math.max(1, per)));
+      for (let r = 0; r < per; r++) {
+        const items = [];
+        for (let p = 0; p < pages; p++) {
+          const k = p * per + r;
+          items.push(rest[k] ? row(rest[k], k + 1) : []);
+        }
+        lines.push({ y, items, showMs: 5000, transMs: 500 });
+        y += ROW + GAP;
+      }
+    }
+    const message = c.show_status ? statusText(attrs, [...new Set(deps.map((d) => d.line))]) : "";
     if (message) {
-      lines.push({ y, cells: [cell({ text: message.toUpperCase(), flex: true })] });
+      lines.push({ y, cells: [cell({ text: message, flex: true })] });
       y += ROW + GAP;
     }
     const title = attrs.letter ? `${attrs.stop_name} (Stop ${attrs.letter})` : attrs.stop_name || "";

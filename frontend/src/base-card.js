@@ -9,7 +9,7 @@ export const COLORS = [
   { value: "#ffd200", label: "Yellow" },
   { value: "#3dff6e", label: "Green" },
   { value: "#f4f4f4", label: "White" },
-  { value: "#ff3a1f", label: "Red (bus Countdown)" },
+  { value: "#ff3a1f", label: "Red" },
 ];
 
 const MIN_PITCH = 1.4;
