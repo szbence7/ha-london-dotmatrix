@@ -166,11 +166,12 @@ export class DotmatrixCard extends HTMLElement {
         <div class="wrap">
           <div class="title"></div>
           <div class="panels"></div>
-          <div class="attribution">${c.show_attribution === false ? "" : "Powered by TfL Open Data"}</div>
+          <div class="attribution"></div>
         </div>
       </ha-card>`;
     this._root = this.shadowRoot.querySelector(".panels");
     this._titleEl = this.shadowRoot.querySelector(".title");
+    this._attributionEl = this.shadowRoot.querySelector(".attribution");
     this._panels = [];
     this._model = null;
     this._dirty = true;
@@ -200,11 +201,15 @@ export class DotmatrixCard extends HTMLElement {
     return { title: this._config.title || "", panels: [{ key: "msg", rows: ROW + 4, lines: [{ y: 2, cells: [{ text, flex: true, align: "center" }] }] }] };
   }
 
+  _idealColumns() {
+    return this.constructor.idealColumns;
+  }
+
   _geometry() {
     const width = this._root.clientWidth - 20; // board padding
     if (width <= 0) return null;
     const dpr = window.devicePixelRatio || 1;
-    const ideal = Number(this._config.columns) > 0 ? Number(this._config.columns) : this.constructor.idealColumns;
+    const ideal = Number(this._config.columns) > 0 ? Number(this._config.columns) : this._idealColumns();
     let pitch = Math.min(MAX_PITCH, Math.max(MIN_PITCH, width / ideal));
     if (Number(this._config.columns) > 0) pitch = Math.max(0.5, width / ideal);
     pitch = Math.max(1 / dpr, Math.round(pitch * dpr) / dpr);
@@ -264,6 +269,10 @@ export class DotmatrixCard extends HTMLElement {
       this._model = model;
       const title = this._config.show_title === false ? "" : this._config.title || model.title || "";
       if (this._titleEl.textContent !== title) this._titleEl.textContent = title;
+      const nr = (this._state?.attributes?.modes || []).includes("national-rail");
+      const credit = this._config.show_attribution === false ? ""
+        : nr ? "Powered by National Rail Enquiries" : "Powered by TfL Open Data";
+      if (this._attributionEl.textContent !== credit) this._attributionEl.textContent = credit;
       this._syncPanels(model, geo);
       model.panels.forEach((p, i) => this._panels[i].panel.setLines(p.lines, t));
       // rebuild on the next full second (clock, countdowns)

@@ -5,7 +5,7 @@ import { COLORS, DOMAIN } from "./base-card.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const MODE_ICONS = {
-  tube: "🚇", bus: "🚌", dlr: "🚈", overground: "🚆", "elizabeth-line": "🚄", tram: "🚊", "river-bus": "⛴️", "cable-car": "🚡",
+  tube: "🚇", bus: "🚌", dlr: "🚈", overground: "🚆", "elizabeth-line": "🚄", tram: "🚊", "river-bus": "⛴️", "cable-car": "🚡", "national-rail": "🚉",
 };
 
 const LABELS = {
@@ -27,7 +27,8 @@ const LABELS = {
   stand_back: "“STAND BACK” when a train is due",
   show_status: "Disruption messages",
   group_by_platform: "One board per platform",
-  show_line: "Line name on each row",
+  show_line: "Line / operator name on each row",
+  show_calling_at: "National Rail: calling points under the first train",
   background: "Black board with bezel",
   show_attribution: "“Powered by TfL Open Data”",
   empty_text: "Text when nothing is due",
@@ -36,7 +37,7 @@ const LABELS = {
 const SEARCH_HINT = {
   "dotmatrix-tube-card": "e.g. Oxford Circus, Bank or King's Cross",
   "dotmatrix-bus-card": "e.g. Oxford Circus, Brixton Station or Camden Town",
-  "dotmatrix-rail-card": "e.g. Stratford, Canary Wharf, Wimbledon or Greenwich Pier",
+  "dotmatrix-rail-card": "e.g. Stratford, Canary Wharf, London Bridge or Greenwich Pier",
 };
 
 function options(attrs, cardType) {
@@ -94,7 +95,7 @@ function schema(cardType, attrs, entities) {
     return [entity, { name: "title", selector: { text: {} } }, platform, lines, { name: "header", selector: { text: {} } },
       grid(num("rows", 1, 10), color, num("max_boards", 1, 8), num("scroll_speed", 5, 60), num("columns", 80, 400, 10), shape),
       grid(bool("show_title"), bool("show_header"), bool("show_clock"), bool("show_status"), bool("group_by_platform"),
-        bool("show_line"), bool("background"), bool("show_attribution")),
+        bool("show_line"), bool("show_calling_at"), bool("background"), bool("show_attribution")),
     ].filter(Boolean);
   }
   return [entity, { name: "title", selector: { text: {} } }, platform, lines,
@@ -252,7 +253,7 @@ export class DotmatrixCardEditor extends HTMLElement {
       const selected = s.entity_id && s.entity_id === this._config?.entity;
       return `<button class="item${selected ? " selected" : ""}" data-i="${i}">
         <div class="modes">${esc(modes)}</div>
-        <div class="line"><span class="name">${esc(s.name)}</span>${s.letter ? `<span class="letter">${esc(s.letter)}</span>` : ""}${s.towards ? `<span class="dir">→ ${esc(s.towards)}</span>` : ""}${s.added ? `<span class="added">✓ added</span>` : ""}</div>
+        <div class="line"><span class="name">${esc(s.name)}</span>${s.letter ? `<span class="letter">${esc(s.letter)}</span>` : ""}${s.towards ? `<span class="dir">→ ${esc(s.towards)}</span>` : ""}${s.crs ? `<span class="dir">${esc(s.crs)}</span>` : ""}${s.added ? `<span class="added">✓ added</span>` : ""}</div>
         <div class="badges">${badges}</div>
       </button>`;
     }).join("");

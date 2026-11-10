@@ -1,5 +1,8 @@
-/* Rail-style indicator for the DLR, Overground, Elizabeth line, trams, river buses and the
- * cable car: header (platform or line + clock), '1st / 2nd / 3rd' rows, optional status line. */
+/* Rail-style indicator for the DLR, Overground, Elizabeth line, trams, river buses, the cable car
+ * and National Rail stations.
+ * TfL stops: header (platform or line + clock), '1st / 2nd / 3rd' rows, optional status line.
+ * National Rail: the classic station board: '1st 10:32 Brighton  Plat 4  On time', the calling
+ * points scrolling under the first train, station messages and the clock. */
 import { ROW, textWidth } from "./engine.js";
 import { DotmatrixCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
 import { tubeTime } from "./tube-card.js";
@@ -9,7 +12,7 @@ const PAD = 1;
 const ORDINALS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"];
 
 export class DotmatrixRailCard extends DotmatrixCard {
-  static modes = ["dlr", "overground", "elizabeth-line", "tram", "river-bus", "cable-car"];
+  static modes = ["dlr", "overground", "elizabeth-line", "tram", "river-bus", "cable-car", "national-rail"];
   static idealColumns = 170;
   static emptyText = "Select a station";
   static defaults = {
@@ -21,6 +24,7 @@ export class DotmatrixRailCard extends DotmatrixCard {
     show_status: true,
     group_by_platform: false,
     show_line: false,
+    show_calling_at: true,
     max_boards: 4,
     scroll_speed: 22,
     background: true,
@@ -62,9 +66,68 @@ export class DotmatrixRailCard extends DotmatrixCard {
     return { lines, rows: y - GAP + PAD };
   }
 
+  _idealColumns() {
+    // a National Rail row carries more (time, platform, status): use smaller LEDs
+    return (this._state?.attributes?.modes || []).includes("national-rail") ? 240 : this.constructor.idealColumns;
+  }
+
+  /** National Rail station board. */
+  _nrBoard(deps, attrs, now) {
+    const c = this._config;
+    const count = Math.max(1, Math.min(10, Number(c.rows) || 3));
+    const shown = deps.slice(0, count);
+    const ordW = Math.max(...ORDINALS.slice(0, Math.max(1, shown.length)).map(textWidth));
+    const timeW = textWidth("88:88");
+    const plat = (d) => (d.platform === "BUS" ? "Bus" : d.platform || "");
+    const platW = Math.max(0, ...shown.map((d) => textWidth(plat(d))));
+    const statusW = Math.max(textWidth("On time"), ...shown.map((d) => textWidth(d.status || "")));
+    const lines = [];
+    let y = PAD;
+    if (!shown.length) {
+      lines.push({ y, cells: [{ text: c.empty_text || "", flex: true, align: "center" }] });
+      y += ROW + GAP;
+    }
+    shown.forEach((d, i) => {
+      const cells = [{ text: ORDINALS[i], w: ordW, gap: 4 }, { text: d.scheduled || "", w: timeW, gap: 5 }];
+      if (c.show_line) cells.push({ text: d.line_name, w: textWidth(d.line_name), gap: 5 });
+      cells.push({ text: d.destination, flex: true, gap: 4 });
+      if (platW) cells.push({ text: plat(d), w: platW, gap: 5 });
+      cells.push({ text: d.status || "", w: statusW, align: "right" });
+      lines.push({ y, cells });
+      y += ROW + GAP;
+      if (i === 0 && c.show_calling_at) {
+        const stops = d.calling_at || [];
+        let text = "";
+        if (d.cancelled) text = d.reason || "This train has been cancelled.";
+        else if (stops.length) {
+          const list = stops.length > 1 ? `${stops.slice(0, -1).join(", ")} and ${stops[stops.length - 1]}` : stops[0];
+          text = `Calling at: ${list}.${d.line_name ? `  A ${d.line_name} service.` : ""}${d.reason ? `  ${d.reason}.` : ""}`;
+        }
+        if (text) {
+          lines.push({ y, cells: [{ text, flex: true }] });
+          y += ROW + GAP;
+        }
+      }
+    });
+    const message = c.show_status ? (Array.isArray(attrs.messages) ? attrs.messages.join("   ***   ") : "") : "";
+    if (message) {
+      lines.push({ y, cells: [{ text: message, flex: true }] });
+      y += ROW + GAP;
+    }
+    if (c.show_clock) {
+      lines.push({ y, cells: [{ text: londonClock(now, true), flex: true, align: "center" }] });
+      y += ROW + GAP;
+    }
+    return { lines, rows: y - GAP + PAD };
+  }
+
   _buildModel(attrs, now) {
     const c = this._config;
     const deps = filterDepartures(attrs, c, now);
+    if ((attrs.modes || []).includes("national-rail")) {
+      const board = this._nrBoard(deps, attrs, now);
+      return { title: attrs.stop_name || "", panels: [{ key: "nr", rows: board.rows, lines: board.lines }] };
+    }
     const title = attrs.stop_name || "";
     const lineNames = [...new Set(deps.map((d) => d.line_name))].join(" / ");
     let groups;

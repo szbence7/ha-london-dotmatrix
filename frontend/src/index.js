@@ -10,7 +10,7 @@ import { DotmatrixBusCard } from "./bus-card.js";
 import { DotmatrixRailCard } from "./rail-card.js";
 import { DotmatrixCardEditor } from "./editor.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const CARDS = [
   ["dotmatrix-tube-card", DotmatrixTubeCard, "London Dotmatrix · Tube platform board",
@@ -18,7 +18,7 @@ const CARDS = [
   ["dotmatrix-bus-card", DotmatrixBusCard, "London Dotmatrix · Bus stop Countdown",
     "London bus stop Countdown sign: route, destination and minutes, with the stop letter and clock."],
   ["dotmatrix-rail-card", DotmatrixRailCard, "London Dotmatrix · Rail departure board",
-    "Departure board for the DLR, Overground, Elizabeth line, trams, river buses and the cable car."],
+    "Departure board for the DLR, Overground, Elizabeth line, trams, river buses, the cable car and National Rail stations."],
 ];
 
 for (const [tag, cls] of CARDS) {
