@@ -1,0 +1,131 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "1/2 · TfL kapcsolat",
+        "description": "Az élő indulásokat a hivatalos **TfL Unified API** adja.\n\nAz **app key nem kötelező**, de ajánlott: nélküle a TfL percenként csak pár lekérést enged. Ingyenes, 2 perc:\n1. Nyisd meg: {url} és **Sign up** (e-mail + jelszó)\n2. **Products** → iratkozz fel a **500 Requests per min** csomagra\n3. **Profile** → másold ki a **Primary key**-t és illeszd be ide.\n\nÜresen hagyva kulcs nélkül is kipróbálhatod. A kulcs csak a Home Assistantodban tárolódik.",
+        "data": {
+          "api_key": "TfL app key (nem kötelező)"
+        },
+        "data_description": {
+          "api_key": "32 karakter, pl. 1a2b3c4d…"
+        }
+      },
+      "start": {
+        "title": "2/2 · Megállók",
+        "description": "Hogyan adod hozzá a megállókat?\n\n**Tipp:** a legkényelmesebb a Dotmatrix kártyák **szerkesztője**: ott **gépelés közben** jönnek a találatok színes vonal-jelvényekkel, és egy kattintással felveszed a megállót.",
+        "menu_options": {
+          "search": "🔎 Megálló keresése most",
+          "finish": "⏭️ Később, a kártyában adom hozzá"
+        }
+      },
+      "search": {
+        "title": "Megálló keresése",
+        "description": "Írd be az állomás vagy buszmegálló nevét (legalább 3 betű), pl. **Oxford Circus**, **Stratford** vagy **Canary Wharf**. Minden TfL módban keres: metró, busz, DLR, Overground, Elizabeth line, villamos, hajó, kabinos felvonó.\n\nMár kiválasztva:\n{selected}",
+        "data": {
+          "query": "Megálló vagy állomás neve"
+        }
+      },
+      "stops": {
+        "title": "Jelöld be a megállókat",
+        "description": "🚇 Metró · 🚄 Elizabeth line · 🚆 Overground · 🚈 DLR · 🚊 Villamos · ⛴️ Hajó · 🚡 Kabinos felvonó · 🚌 Busz (megállóbetűvel és iránnyal).\n\nTöbbet is bejelölhetsz.",
+        "data": {
+          "stops": "Megállók"
+        }
+      },
+      "more": {
+        "title": "Kész vagy?",
+        "description": "Kiválasztott megállók:\n{selected}",
+        "menu_options": {
+          "search": "➕ Másik megálló keresése",
+          "finish": "✅ Kész, mentés"
+        }
+      },
+      "reauth_confirm": {
+        "title": "A TfL elutasította a kulcsot",
+        "description": "A mentett kulcs már nem működik. Kérj újat itt: {url}, vagy hagyd üresen, és kulcs nélkül megy tovább.",
+        "data": {
+          "api_key": "TfL app key (nem kötelező)"
+        }
+      },
+      "reconfigure": {
+        "title": "TfL app key cseréje",
+        "description": "Új kulcs innen: {url}, vagy hagyd üresen a kulcs nélküli használathoz.",
+        "data": {
+          "api_key": "TfL app key (nem kötelező)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "A TfL elutasította a kulcsot. Ellenőrizd, hogy a teljes Primary key-t másoltad-e ki.",
+      "cannot_connect": "A TfL most nem érhető el (vagy elérted a limitet). Próbáld újra egy perc múlva.",
+      "unknown": "Váratlan hiba a TfL-től.",
+      "query_too_short": "Legalább 3 karaktert írj be.",
+      "no_stops": "Nincs találat. Próbáld rövidebben vagy másképp.",
+      "select_one": "Jelölj be legalább egy megállót."
+    },
+    "abort": {
+      "single_instance_allowed": "A London Dotmatrix már be van állítva. Új megállót az integráció oldalán a **Megálló hozzáadása** gombbal adhatsz hozzá.",
+      "reauth_successful": "Kulcs frissítve.",
+      "reconfigure_successful": "Kulcs frissítve."
+    }
+  },
+  "config_subentries": {
+    "stop": {
+      "initiate_flow": {
+        "user": "Megálló hozzáadása"
+      },
+      "entry_type": "Megálló",
+      "step": {
+        "user": {
+          "title": "Megálló hozzáadása",
+          "description": "Írd be az állomás vagy buszmegálló nevét (legalább 3 betű).",
+          "data": {
+            "query": "Megálló vagy állomás neve"
+          }
+        },
+        "pick": {
+          "title": "Válaszd ki a megállót",
+          "description": "🚇 Metró · 🚄 Elizabeth line · 🚆 Overground · 🚈 DLR · 🚊 Villamos · ⛴️ Hajó · 🚡 Kabinos felvonó · 🚌 Busz",
+          "data": {
+            "stop_id": "Megálló"
+          }
+        }
+      },
+      "error": {
+        "query_too_short": "Legalább 3 karaktert írj be.",
+        "no_stops": "Nincs találat. Próbáld rövidebben vagy másképp.",
+        "all_added": "Minden találat már fel van véve.",
+        "invalid_auth": "A TfL elutasította a kulcsot.",
+        "cannot_connect": "A TfL most nem érhető el.",
+        "unknown": "Váratlan hiba a TfL-től."
+      },
+      "abort": {
+        "already_configured": "Ez a megálló már fel van véve."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "London Dotmatrix beállítások",
+        "description": "Kulcs nélkül a frissítési idő legyen legalább 30 mp, különben a TfL elutasíthatja a lekéréseket.",
+        "data": {
+          "scan_interval": "Frissítési idő",
+          "max_departures": "Tárolt indulások megállónként"
+        },
+        "data_description": {
+          "scan_interval": "Ilyen gyakran kérdezi le a TfL-t megállónként (15–300 mp).",
+          "max_departures": "A nagy csomópontokon sok peron van: legyen elég mindegyik kijelzőnek."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_arrival": {
+        "name": "Következő érkezés"
+      }
+    }
+  }
+}
