@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -16,14 +17,25 @@ from .const import DOMAIN, VERSION
 _LOGGER = logging.getLogger(__name__)
 CARD_FILE = "dotmatrix-cards.js"
 CARD_PATH = f"/{DOMAIN}/{CARD_FILE}"
-CARD_URL = f"{CARD_PATH}?v={VERSION}"
+CARD_FILE_PATH = Path(__file__).parent / "www" / CARD_FILE
+
+
+def _card_url() -> str:
+    """Cache-busting URL: changes whenever the bundled cards change, not only on version bumps."""
+    digest = hashlib.sha256(CARD_FILE_PATH.read_bytes()).hexdigest()[:10]
+    return f"{CARD_PATH}?v={VERSION}-{digest}"
+
+
+CARD_URL = f"{CARD_PATH}?v={VERSION}"  # replaced by the hashed URL at setup
 
 
 async def async_setup_frontend(hass: HomeAssistant) -> None:
     """Expose only the bundled cards, never the integration's Python files."""
     await hass.http.async_register_static_paths(
-        [StaticPathConfig(CARD_PATH, str(Path(__file__).parent / "www" / CARD_FILE), False)]
+        [StaticPathConfig(CARD_PATH, str(CARD_FILE_PATH), False)]
     )
+    global CARD_URL  # noqa: PLW0603
+    CARD_URL = await hass.async_add_executor_job(_card_url)
     await async_register_resource(hass)
 
 
