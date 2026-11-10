@@ -1,0 +1,20 @@
+{
+  "domain": "london_dotmatrix",
+  "name": "London Dotmatrix",
+  "codeowners": [
+    "@szbence7"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http",
+    "lovelace",
+    "websocket_api"
+  ],
+  "documentation": "https://github.com/szbence7/ha-london-dotmatrix",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/szbence7/ha-london-dotmatrix/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}
