@@ -159,7 +159,7 @@ All options are in the visual editor; the YAML names are below.
 | `columns` | all | automatic | LEDs per row (fixed resolution) |
 | `dot_shape` | all | round (bus: square) | `round` or `square` LEDs |
 | `background` | all | `true` | black board with a bezel |
-| `show_attribution` | all | `true` | the small *Powered by TfL Open Data* line |
+| `show_attribution` | all | `false` | a small *Powered by TfL Open Data* / *Powered by National Rail Enquiries* line under the board |
 
 ## Sensors
 
