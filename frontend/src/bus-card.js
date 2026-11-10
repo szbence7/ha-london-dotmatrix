@@ -1,6 +1,6 @@
 /* London bus stop Countdown sign: stop name and clock on top, then route / destination / minutes. */
 import { ROW, textWidth } from "./engine.js";
-import { GlowboardCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
+import { DotmatrixCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
 
 const GAP = 3;
 const PAD = 1;
@@ -10,7 +10,7 @@ export function busTime(seconds) {
   return `${Math.floor(seconds / 60)} min`;
 }
 
-export class GlowboardBusCard extends GlowboardCard {
+export class DotmatrixBusCard extends DotmatrixCard {
   static modes = ["bus"];
   static idealColumns = 190;
   static emptyText = "Select a bus stop";

@@ -1,15 +1,15 @@
 /* Rail-style indicator for the DLR, Overground, Elizabeth line, trams, river buses and the
  * cable car: header (platform or line + clock), '1st / 2nd / 3rd' rows, optional status line. */
 import { ROW, textWidth } from "./engine.js";
-import { GlowboardCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
+import { DotmatrixCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
 import { tubeTime } from "./tube-card.js";
 
 const GAP = 3;
 const PAD = 1;
 const ORDINALS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"];
 
-export class GlowboardRailCard extends GlowboardCard {
-  static modes = ["dlr", "overground", "elizabeth-line", "tram", "river-bus", "cable-car", "tube"];
+export class DotmatrixRailCard extends DotmatrixCard {
+  static modes = ["dlr", "overground", "elizabeth-line", "tram", "river-bus", "cable-car"];
   static idealColumns = 170;
   static emptyText = "Select a station";
   static defaults = {

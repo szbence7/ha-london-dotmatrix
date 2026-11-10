@@ -1,5 +1,5 @@
 /*
- * Dot-matrix engine shared by the three Glowboard cards.
+ * Dot-matrix engine shared by the three Dotmatrix cards.
  *
  * Performance model (same as the Budapest FUTÁR card, which fixed the slow dashboards):
  * - nothing runs while the card is off-screen or the tab is hidden;

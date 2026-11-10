@@ -1,7 +1,7 @@
 /* Shared card shell: Home Assistant plumbing, layout, visibility and the render scheduler. */
 import { Panel, ROW } from "./engine.js";
 
-export const DOMAIN = "glowboard_london";
+export const DOMAIN = "london_dotmatrix";
 
 export const COLORS = [
   { value: "#ffb000", label: "Amber (Underground)" },
@@ -64,7 +64,7 @@ export function statusText(attrs, lineIds) {
     .join("   ***   ");
 }
 
-export class GlowboardCard extends HTMLElement {
+export class DotmatrixCard extends HTMLElement {
   static defaults = {};
   static idealColumns = 170;
   static modes = [];
@@ -89,7 +89,7 @@ export class GlowboardCard extends HTMLElement {
   }
 
   static getConfigElement() {
-    return document.createElement("glowboard-card-editor");
+    return document.createElement("dotmatrix-card-editor");
   }
 
   setConfig(config) {

@@ -34,9 +34,9 @@ const LABELS = {
 };
 
 const SEARCH_HINT = {
-  "glowboard-tube-card": "e.g. Oxford Circus, Bank or King's Cross",
-  "glowboard-bus-card": "e.g. Oxford Circus, Brixton Station or Camden Town",
-  "glowboard-rail-card": "e.g. Stratford, Canary Wharf, Wimbledon or Greenwich Pier",
+  "dotmatrix-tube-card": "e.g. Oxford Circus, Bank or King's Cross",
+  "dotmatrix-bus-card": "e.g. Oxford Circus, Brixton Station or Camden Town",
+  "dotmatrix-rail-card": "e.g. Stratford, Canary Wharf, Wimbledon or Greenwich Pier",
 };
 
 function options(attrs, cardType) {
@@ -51,7 +51,7 @@ function options(attrs, cardType) {
   const known = new Map();
   for (const l of Array.isArray(attrs?.lines) ? attrs.lines : []) known.set(l.id, `${MODE_ICONS[l.mode] || ""} ${l.name}`.trim());
   for (const d of deps) if (!known.has(d.line)) known.set(d.line, `${MODE_ICONS[d.mode] || ""} ${d.line_name}`.trim());
-  const wantBus = cardType === "glowboard-bus-card";
+  const wantBus = cardType === "dotmatrix-bus-card";
   const lineOptions = [...known.entries()]
     .filter(([id]) => {
       const mode = (attrs?.lines || []).find((l) => l.id === id)?.mode || deps.find((d) => d.line === id)?.mode;
@@ -61,9 +61,19 @@ function options(attrs, cardType) {
   return { platformOptions, lineOptions };
 }
 
-function schema(cardType, attrs) {
+/** This card's stops only: Tube sensors for the Tube card, bus stops for the bus card, … */
+export function cardEntities(hass, modes) {
+  return Object.keys(hass?.states || {}).filter((id) => {
+    const a = hass.states[id].attributes || {};
+    return id.startsWith("sensor.") && a.stop_id && Array.isArray(a.modes) && a.modes.some((m) => modes.includes(m));
+  }).sort();
+}
+
+function schema(cardType, attrs, entities) {
   const { platformOptions, lineOptions } = options(attrs, cardType);
-  const entity = { name: "entity", required: true, selector: { entity: { domain: "sensor", filter: { integration: DOMAIN } } } };
+  const entityFilter = { domain: "sensor", filter: { integration: DOMAIN } };
+  if (entities.length) entityFilter.include_entities = entities;
+  const entity = { name: "entity", required: true, selector: { entity: entityFilter } };
   const platform = { name: "platform", selector: { select: { options: platformOptions, custom_value: true, mode: "dropdown" } } };
   const lines = lineOptions.length
     ? { name: "lines", selector: { select: { options: lineOptions, multiple: true, mode: "list" } } }
@@ -74,13 +84,13 @@ function schema(cardType, attrs) {
   const grid = (...schema) => ({ type: "grid", name: "", schema });
   const shape = { name: "dot_shape", selector: { select: { mode: "dropdown", options: [{ value: "round", label: "Round" }, { value: "square", label: "Square" }] } } };
 
-  if (cardType === "glowboard-bus-card") {
+  if (cardType === "dotmatrix-bus-card") {
     return [entity, { name: "title", selector: { text: {} } }, lines,
       grid(num("rows", 1, 12), color, num("scroll_speed", 5, 60), num("columns", 80, 400, 10), shape, { name: "empty_text", selector: { text: {} } }),
       grid(bool("show_title"), bool("show_header"), bool("show_clock"), bool("show_status"), bool("background"), bool("show_attribution")),
     ].filter(Boolean);
   }
-  if (cardType === "glowboard-rail-card") {
+  if (cardType === "dotmatrix-rail-card") {
     return [entity, { name: "title", selector: { text: {} } }, platform, lines, { name: "header", selector: { text: {} } },
       grid(num("rows", 1, 10), color, num("max_boards", 1, 8), num("scroll_speed", 5, 60), num("columns", 80, 400, 10), shape),
       grid(bool("show_title"), bool("show_header"), bool("show_clock"), bool("show_status"), bool("group_by_platform"),
@@ -93,7 +103,7 @@ function schema(cardType, attrs) {
   ].filter(Boolean);
 }
 
-export class GlowboardCardEditor extends HTMLElement {
+export class DotmatrixCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -101,7 +111,7 @@ export class GlowboardCardEditor extends HTMLElement {
   }
 
   get _cardType() {
-    return String(this._config?.type || "").replace(/^custom:/, "") || "glowboard-tube-card";
+    return String(this._config?.type || "").replace(/^custom:/, "") || "dotmatrix-tube-card";
   }
 
   get _cardClass() {
@@ -121,7 +131,9 @@ export class GlowboardCardEditor extends HTMLElement {
     if (!this._built) this._build();
     if (this._form) this._form.hass = hass;
     const id = this._config?.entity;
-    if (id && old?.states[id] !== hass.states[id]) this._refreshForm();
+    if (!old || (id && old.states[id] !== hass.states[id]) || Object.keys(old.states).length !== Object.keys(hass.states).length) {
+      this._refreshForm();
+    }
   }
 
   _attrs() {
@@ -132,10 +144,12 @@ export class GlowboardCardEditor extends HTMLElement {
   _refreshForm() {
     if (!this._form) return;
     // keep the schema stable while the same stop is selected (options change every poll)
-    const key = `${this._cardType}|${this._config?.entity || ""}|${JSON.stringify(options(this._attrs(), this._cardType))}`;
+    const entities = cardEntities(this._hass, this._cardClass?.modes || []);
+    if (this._config?.entity && !entities.includes(this._config.entity)) entities.push(this._config.entity);
+    const key = `${this._cardType}|${this._config?.entity || ""}|${entities.join(",")}|${JSON.stringify(options(this._attrs(), this._cardType))}`;
     if (key !== this._schemaKey) {
       this._schemaKey = key;
-      this._form.schema = schema(this._cardType, this._attrs());
+      this._form.schema = schema(this._cardType, this._attrs(), entities);
     }
     this._form.data = this._formData;
   }
@@ -176,8 +190,8 @@ export class GlowboardCardEditor extends HTMLElement {
       </style>
       <div class="search">
         <div class="label">Find a station or stop</div>
-        <input type="search" autocomplete="off" placeholder="Start typing, ${esc(SEARCH_HINT[this._cardType] || SEARCH_HINT["glowboard-tube-card"])}">
-        <div class="hint">Click a result: if it is not added yet, it is added to the Glowboard London integration automatically.</div>
+        <input type="search" autocomplete="off" placeholder="Start typing, ${esc(SEARCH_HINT[this._cardType] || SEARCH_HINT["dotmatrix-tube-card"])}">
+        <div class="hint">Click a result: if it is not added yet, it is added to the London Dotmatrix integration automatically.</div>
         <div class="status"></div>
         <div class="results"></div>
       </div>
@@ -222,7 +236,7 @@ export class GlowboardCardEditor extends HTMLElement {
       if (seq !== this._seq) return;
       this._results.innerHTML = "";
       this._setStatus(e?.code === "unknown_command"
-        ? "Install and set up the Glowboard London integration first."
+        ? "Install and set up the London Dotmatrix integration first."
         : e?.message || "Search failed.", true);
     }
   }

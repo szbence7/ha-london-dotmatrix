@@ -1,7 +1,7 @@
 /* London Underground platform indicator: 2 fixed rows, a third row for STAND BACK, service
  * messages or a swipe-up carousel of later trains, and the clock - one board per platform. */
 import { ROW, textWidth } from "./engine.js";
-import { GlowboardCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
+import { DotmatrixCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
 
 const STAND_BACK = ["*** STAND BACK - TRAIN APPROACHING ***", "STAND BACK - TRAIN APPROACHING", "STAND BACK"];
 const GAP = 3; // dot rows between text rows
@@ -18,7 +18,7 @@ function platformKey(dep) {
   return dep.platform || dep.line_name || "Departures";
 }
 
-export class GlowboardTubeCard extends GlowboardCard {
+export class DotmatrixTubeCard extends DotmatrixCard {
   static modes = ["tube"];
   static idealColumns = 200;
   static emptyText = "Select a station";
