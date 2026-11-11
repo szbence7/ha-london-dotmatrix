@@ -247,4 +247,4 @@ pip install pytest-homeassistant-custom-component && pytest   # integration
 
 If it saves you a sprint for the train, you can buy me a coffee. Thank you! ☕
 
-<a href="https://www.buymeacoffee.com/benceix"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=benceix&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee"></a>
+[![Buy Me a Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://www.buymeacoffee.com/benceix)
