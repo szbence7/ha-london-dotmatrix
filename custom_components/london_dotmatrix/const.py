@@ -129,4 +129,5 @@ GROUP_TYPES = {
     "TransportInterchange",
     "NaptanBusCoachStation",
     "NaptanOnstreetBusCoachStopPair",
+    "NaptanOnstreetBusCoachStopCluster",
 }

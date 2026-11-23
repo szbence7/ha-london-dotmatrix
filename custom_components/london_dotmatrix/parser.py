@@ -112,26 +112,39 @@ def _natural(text: str) -> tuple:
     return tuple(int(p) if p.isdigit() else p.lower() for p in re.split(r"(\d+)", text))
 
 
-def collect_stops(details: list[dict[str, Any]], towards: dict[str, str] | None = None) -> list[dict[str, Any]]:
-    """Walk stop point trees; hubs and bus stations expand into the stops below them."""
+def collect_stops(
+    details: list[dict[str, Any]],
+    towards: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Recursively collect pickable stops from TfL stop point trees."""
     towards = towards or {}
     found: dict[str, dict[str, Any]] = {}
 
     def walk(node: dict[str, Any], depth: int = 0) -> None:
+        if depth > 6:
+            return
+
         stop_type = node.get("stopType")
+
         if stop_type in PICKABLE_TYPES:
             stop_id = str(node.get("naptanId") or node.get("id") or "")
-            if stop_id not in found and (stop := normalize_stop(node, towards.get(stop_id, ""))):
-                found[stop_id] = stop
-            return
-        if stop_type in GROUP_TYPES and depth < 4:
-            for child in node.get("children") or []:
-                walk(child, depth + 1)
+
+            if stop_id and stop_id not in found:
+                stop = normalize_stop(
+                    node,
+                    towards.get(stop_id, ""),
+                )
+                if stop:
+                    found[stop_id] = stop
+
+        # Always inspect children, including children of pickable nodes.
+        for child in node.get("children") or []:
+            walk(child, depth + 1)
 
     for node in details:
         walk(node)
-    return list(found.values())
 
+    return list(found.values())
 
 def sort_stops(stops: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
     """Stations first, then bus stops; names that start with the query first."""
