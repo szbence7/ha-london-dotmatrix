@@ -23,6 +23,9 @@ const CHAR_MAP = {
 };
 
 const glyphCache = new Map();
+/** Rendered (non-scrolling) text strips shared by every panel: "On time" is drawn once, not six times. */
+const STRIP_CACHE = new Map();
+const STRIP_CACHE_MAX = 150;
 
 function glyph(ch, font) {
   const key = `${font}|${ch}`;
@@ -210,7 +213,8 @@ export class Panel {
     canvas.height = (rows + 2) * this.pp;
     const ctx = canvas.getContext("2d");
     ctx.translate(0, this.pp);
-    ctx.fillStyle = ctx.shadowColor = color;
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
     ctx.shadowBlur = this.pp * 0.9;
     ctx.fill(this._dotPath(cols, rows, test));
     return canvas;
@@ -290,29 +294,43 @@ export class Panel {
     const { ctx, pp } = this;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (!this.background) {
-      const bg = document.createElement("canvas");
-      bg.width = this.cols * pp;
-      bg.height = this.rows * pp;
-      const b = bg.getContext("2d");
-      b.fillStyle = this.style.dim;
-      b.fill(this._dotPath(this.cols, this.rows, () => true));
-      this.background = bg;
+      // one small repeating tile instead of an ~11,000-arc grid: far cheaper on phones
+      const tile = document.createElement("canvas");
+      tile.width = tile.height = pp * 8;
+      const tctx = tile.getContext("2d");
+      tctx.fillStyle = this.style.dim;
+      tctx.fill(this._dotPath(8, 8, () => true));
+      this.background = ctx.createPattern(tile, "repeat");
     }
-    ctx.drawImage(this.background, this.offsetX, 0);
+    ctx.save();
+    ctx.translate(this.offsetX, 0);
+    ctx.fillStyle = this.background;
+    ctx.fillRect(0, 0, this.cols * pp, this.rows * pp);
+    ctx.restore();
     for (const { layer, y, dy, step, clip } of sprites) {
       const { width, length, matrix, scroll, offset } = layer;
       const tileStart = scroll ? Math.floor(step / width) * width : 0;
       if (!layer.bitmap || tileStart !== layer.tileStart) {
         const tileWidth = scroll ? width * 2 : width;
         const rows = matrix.rows;
-        layer.bitmap = this._strip(tileWidth, matrix.height, (col, row) => {
-          if (scroll) {
-            const i = (tileStart + col) % length;
-            return i < matrix.width && rows[row][i] === 1;
+        const cacheKey = scroll ? "" :
+          `${pp}|${layer.color}|${layer.font}|${width}|${offset}|${layer.text}`;
+        if (cacheKey && STRIP_CACHE.has(cacheKey)) {
+          layer.bitmap = STRIP_CACHE.get(cacheKey);
+        } else {
+          layer.bitmap = this._strip(tileWidth, matrix.height, (col, row) => {
+            if (scroll) {
+              const i = (tileStart + col) % length;
+              return i < matrix.width && rows[row][i] === 1;
+            }
+            const i = col - offset;
+            return i >= 0 && i < matrix.width && rows[row][i] === 1;
+          }, layer.color);
+          if (cacheKey) {
+            STRIP_CACHE.set(cacheKey, layer.bitmap);
+            if (STRIP_CACHE.size > STRIP_CACHE_MAX) STRIP_CACHE.delete(STRIP_CACHE.keys().next().value);
           }
-          const i = col - offset;
-          return i >= 0 && i < matrix.width && rows[row][i] === 1;
-        }, layer.color);
+        }
         layer.tileStart = tileStart;
       }
       const sx = (step - tileStart) * pp;

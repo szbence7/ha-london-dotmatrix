@@ -1,7 +1,7 @@
 /* London Underground platform indicator: 2 fixed rows, a third row for STAND BACK, service
  * messages or a swipe-up carousel of later trains, and the clock - one board per platform. */
 import { ROW, textWidth } from "./engine.js";
-import { DotmatrixCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
+import { DotmatrixCard, filterDepartures, londonClock, platformLabel, secondsTo, statusText } from "./base-card.js";
 
 const STAND_BACK = "*** STAND BACK - TRAIN APPROACHING ***"; // always with the stars, like the real boards
 const GAP = 3; // dot rows between text rows
@@ -90,7 +90,7 @@ export class DotmatrixTubeCard extends DotmatrixCard {
       groups.get(key).push(d);
     }
     let keys = [...groups.keys()].sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
-    if (!keys.length) keys = [c.platform || ""];
+    if (!keys.length) keys = [platformLabel(c)];
     keys = keys.slice(0, Math.max(1, Number(c.max_boards) || 1));
     const panels = keys.map((key) => {
       const list = groups.get(key) || [];

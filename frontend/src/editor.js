@@ -13,6 +13,8 @@ const LABELS = {
   title: "Title (default: stop name)",
   header: "Header text (default: platform or line)",
   platform: "Platform (empty: every platform)",
+  platforms: "Platforms (none ticked: every platform)",
+  calling_at: "Only trains calling at (empty: every destination)",
   lines: "Only these lines / routes (empty: all)",
   color: "LED colour",
   rows: "Rows on the board",
@@ -30,6 +32,10 @@ const LABELS = {
   group_by_platform: "One board per platform",
   show_line: "Line / operator name on each row",
   show_calling_at: "National Rail: calling points under the first train",
+  show_ordinals: "Train numbers (1st, 2nd, 3rd…)",
+  spread: "Spread the columns across the board",
+  show_column_header: "Column header row (Time / Destination / Platform / ETA)",
+  header_color: "Column header colour (empty: board colour)",
   background: "Black board with bezel",
   show_attribution: "Data source line under the board",
   empty_text: "Text when nothing is due",
@@ -46,7 +52,6 @@ function options(attrs, cardType) {
   const platforms = [...new Set(deps.map((d) => d.platform).filter(Boolean))].sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
   const directions = [...new Set(platforms.map((p) => /^(\w+bound)\b/i.exec(p)?.[1]).filter(Boolean))];
   const platformOptions = [
-    { value: "", label: "Every platform" },
     ...directions.map((d) => ({ value: d, label: `${d} (every ${d.toLowerCase()} platform)` })),
     ...platforms.map((p) => ({ value: p, label: p })),
   ];
@@ -76,7 +81,7 @@ function schema(cardType, attrs, entities) {
   const entityFilter = { domain: "sensor", filter: { integration: DOMAIN } };
   if (entities.length) entityFilter.include_entities = entities;
   const entity = { name: "entity", required: true, selector: { entity: entityFilter } };
-  const platform = { name: "platform", selector: { select: { options: platformOptions, custom_value: true, mode: "dropdown" } } };
+  const platform = { name: "platforms", selector: { select: { options: platformOptions, multiple: true, mode: "list" } } };
   const lines = lineOptions.length
     ? { name: "lines", selector: { select: { options: lineOptions, multiple: true, mode: "list" } } }
     : null;
@@ -93,10 +98,11 @@ function schema(cardType, attrs, entities) {
     ].filter(Boolean);
   }
   if (cardType === "dotmatrix-rail-card") {
-    return [entity, { name: "title", selector: { text: {} } }, platform, lines, { name: "header", selector: { text: {} } },
-      grid(num("rows", 1, 10), color, num("max_boards", 1, 8), num("scroll_speed", 5, 60), num("columns", 80, 400, 10), shape),
+    return [entity, { name: "title", selector: { text: {} } }, platform, lines, { name: "calling_at", selector: { text: {} } }, { name: "header", selector: { text: {} } },
+      grid(num("rows", 1, 10), color, { name: "header_color", selector: { select: { options: COLORS, custom_value: true, mode: "dropdown" } } },
+        num("max_boards", 1, 8), num("scroll_speed", 5, 60), num("columns", 80, 400, 10), shape),
       grid(bool("show_title"), bool("show_header"), bool("show_clock"), bool("show_status"), bool("group_by_platform"),
-        bool("show_line"), bool("show_calling_at"), bool("background"), bool("show_attribution")),
+        bool("show_line"), bool("show_calling_at"), bool("show_ordinals"), bool("spread"), bool("show_column_header"), bool("background"), bool("show_attribution")),
     ].filter(Boolean);
   }
   return [entity, { name: "title", selector: { text: {} } }, platform, lines,
@@ -124,6 +130,10 @@ export class DotmatrixCardEditor extends HTMLElement {
     const defaults = this._cardClass?.defaults || {};
     this._config = { ...config };
     this._formData = { ...defaults, ...config };
+        // the form edits `platforms` (list); fold a legacy single `platform` into it for display
+    if (!Array.isArray(this._formData.platforms)) {
+      this._formData.platforms = this._formData.platform ? [String(this._formData.platform)] : [];
+    }
     this._refreshForm();
   }
 
@@ -275,6 +285,7 @@ export class DotmatrixCardEditor extends HTMLElement {
       }
       const config = { ...this._config, entity };
       delete config.platform; // platforms and lines belong to the old stop
+      delete config.platforms;      
       delete config.lines;
       this._update(config);
       this._setStatus(`Selected: ${stop.name}${stop.letter ? ` (Stop ${stop.letter})` : ""}`);

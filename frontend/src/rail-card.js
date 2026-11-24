@@ -8,7 +8,7 @@ import { fontHeight, textWidth as luWidth } from "./engine.js";
 const FONT = "dm"; // UK station board 5x7 typeface
 const ROW = fontHeight(FONT);
 const textWidth = (t) => luWidth(t, FONT);
-import { DotmatrixCard, filterDepartures, londonClock, secondsTo, statusText } from "./base-card.js";
+import { DotmatrixCard, filterDepartures, londonClock, platformLabel, secondsTo, statusText } from "./base-card.js";
 import { tubeTime } from "./tube-card.js";
 
 const GAP = 2;
@@ -36,6 +36,10 @@ export class DotmatrixRailCard extends DotmatrixCard {
     group_by_platform: false,
     show_line: false,
     show_calling_at: true,
+    show_ordinals: true,
+    spread: false,
+    show_column_header: false,
+    header_color: "",
     max_boards: 4,
     scroll_speed: 22,
     background: true,
@@ -88,23 +92,62 @@ export class DotmatrixRailCard extends DotmatrixCard {
     const c = this._config;
     const count = Math.max(1, Math.min(10, Number(c.rows) || 3));
     const shown = deps.slice(0, count);
-    const ordW = Math.max(...ORDINALS.slice(0, Math.max(1, shown.length)).map(textWidth));
+    const ordW = c.show_ordinals === false ? 0 : Math.max(...ORDINALS.slice(0, Math.max(1, shown.length)).map(textWidth));
     const timeW = textWidth("88:88");
     const plat = (d) => (d.platform === "BUS" ? "Bus" : d.platform || "");
     const platW = Math.max(0, ...shown.map((d) => textWidth(plat(d))));
     const statusW = Math.max(textWidth("On time"), ...shown.map((d) => textWidth(d.status || "")));
+    // spread: fixed-width columns joined by flexible spacers, so the time sits at the left
+    // edge, the status at the right edge, and destination / platform spread between them
+    const destW = Math.max(0, ...shown.map((d) => textWidth(d.destination)));
+    // the platform column is at least as wide as its header so "Platform" never scrolls
+    const platColW = c.show_column_header ? Math.max(platW, textWidth("Platform")) : platW;
+    const lineColW = Math.max(0, ...shown.map((d) => textWidth(d.line_name)));
     const lines = [];
     let y = PAD;
+    if (c.show_column_header) {
+      const color = c.header_color ? String(c.header_color) : undefined; // empty: board colour
+      const h = (text, extra = {}) => ({ text, color, ...extra });
+      const cells = [];
+      if (c.show_ordinals !== false) cells.push(h("", { w: ordW, gap: 4 }));
+      cells.push(h("Time", { w: timeW, gap: 5 }));
+      if (c.show_line) cells.push(h("", { w: lineColW, gap: 5 }));
+      if (c.spread) {
+        cells.push(h("", { flex: true }));
+        cells.push(h("Destination", { w: destW }));
+        cells.push(h("", { flex: true }));
+        if (platColW) cells.push(h("Platform", { w: platColW, align: "center" }));
+        cells.push(h("", { flex: true }));
+        cells.push(h("ETA", { w: statusW, align: "right" }));
+      } else {
+        cells.push(h("Destination", { flex: true, gap: 4 }));
+        if (platColW) cells.push(h("Platform", { w: platColW, gap: 5, align: "center" }));
+        cells.push(h("ETA", { w: statusW, align: "right" }));
+      }
+      lines.push({ y, cells });
+      y += ROW + GAP;
+    }
     if (!shown.length) {
       lines.push({ y, cells: [{ text: c.empty_text || "", flex: true, align: "center" }] });
       y += ROW + GAP;
     }
     shown.forEach((d, i) => {
-      const cells = [{ text: ORDINALS[i], w: ordW, gap: 4 }, { text: d.scheduled || "", w: timeW, gap: 5 }];
-      if (c.show_line) cells.push({ text: d.line_name, w: textWidth(d.line_name), gap: 5 });
-      cells.push({ text: d.destination, flex: true, gap: 4 });
-      if (platW) cells.push({ text: plat(d), w: platW, gap: 5 });
-      cells.push({ text: d.status || "", w: statusW, align: "right" });
+      const cells = [];
+      if (c.show_ordinals !== false) cells.push({ text: ORDINALS[i], w: ordW, gap: 4 });
+      cells.push({ text: d.scheduled || "", w: timeW, gap: 5 });
+      if (c.show_line) cells.push({ text: d.line_name, w: lineColW, gap: 5 });
+      if (c.spread) {
+        cells.push({ text: "", flex: true });
+        cells.push({ text: d.destination, w: destW });
+        cells.push({ text: "", flex: true });
+        if (platColW) cells.push({ text: plat(d), w: platColW, align: "center" });
+        cells.push({ text: "", flex: true });
+        cells.push({ text: d.status || "", w: statusW, align: "right" });
+      } else {
+        cells.push({ text: d.destination, flex: true, gap: 4 });
+        if (platColW) cells.push({ text: plat(d), w: platColW, gap: 5, align: "center" });
+        cells.push({ text: d.status || "", w: statusW, align: "right" });
+      }
       lines.push({ y, cells });
       y += ROW + GAP;
       if (i === 0 && c.show_calling_at) {
@@ -153,7 +196,7 @@ export class DotmatrixRailCard extends DotmatrixCard {
       groups = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }));
       groups = groups.slice(0, Math.max(1, Number(c.max_boards) || 1));
     }
-    if (!groups?.length) groups = [[c.platform || "", deps]];
+    if (!groups?.length) groups = [[platformLabel(c), deps]];
     const panels = groups.map(([key, list]) => {
       const header = c.header || key || [...new Set(list.map((d) => d.line_name))].join(" / ") || lineNames || title;
       const board = this._board(list, attrs, now, header);

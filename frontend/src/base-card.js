@@ -39,20 +39,46 @@ function hexToRgb(hex) {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+/** Platform filters from the config: `platforms` (list) and the legacy single `platform`, combined. */
+function platformFilters(config) {
+  const raw = [];
+  if (Array.isArray(config.platforms)) raw.push(...config.platforms);
+  else if (config.platforms != null) raw.push(config.platforms);
+  if (config.platform != null) raw.push(config.platform);
+  return [...new Set(raw.map((p) => String(p).trim().toLowerCase()).filter(Boolean))];
+}
+
+/** Exact match always; substring only for word-like filters ("Eastbound", "Platform 5"),
+ *  so a filter of "1" does not also catch platforms "10"-"15". */
+function platformMatches(platform, filter) {
+  const p = String(platform || "").toLowerCase();
+  return !!p && (p === filter || (filter.length >= 3 && /[a-z]/.test(filter) && p.includes(filter)));
+}
+
+/** Fallback board header / group key for the configured platform filter. */
+export function platformLabel(config) {
+  const single = String(config.platform || "").trim();
+  if (single) return single;
+  return (Array.isArray(config.platforms) ? config.platforms : []).map((p) => String(p).trim()).filter(Boolean).join(" / ");
+}
+
 /** Departures of the card's stop that pass the card's filters (still visible for 30 s after due). */
 export function filterDepartures(attrs, config, now) {
   const lines = (config.lines || []).map((l) => String(l).toLowerCase());
-  const platform = String(config.platform || "").trim().toLowerCase();
+  const platforms = platformFilters(config);
+  const calling = (Array.isArray(config.calling_at) ? config.calling_at : [config.calling_at])
+    .map((s) => String(s || "").trim().toLowerCase()).filter(Boolean);
   const direction = String(config.direction || "").trim().toLowerCase();
   return (Array.isArray(attrs?.departures) ? attrs.departures : [])
     .filter((d) => d.expected * 1000 > now - 30000)
     .filter((d) => !lines.length || lines.includes(String(d.line).toLowerCase()))
-    .filter((d) => !platform || String(d.platform || "").toLowerCase() === platform ||
-      String(d.platform || "").toLowerCase().includes(platform))
+    .filter((d) => !platforms.length || platforms.some((f) => platformMatches(d.platform, f)))
+    .filter((d) => !calling.length || calling.some((c) =>
+      String(d.destination || "").toLowerCase() === c ||
+      (Array.isArray(d.calling_at) && d.calling_at.some((s) => String(s).toLowerCase() === c))))
     .filter((d) => !direction || String(d.direction || "").toLowerCase() === direction)
     .sort((a, b) => a.expected - b.expected);
 }
-
 /** Disruption text for the given lines (only lines that are not running a good service). */
 export function statusText(attrs, lineIds) {
   const wanted = new Set(lineIds.map((l) => String(l).toLowerCase()));
@@ -118,8 +144,12 @@ export class DotmatrixCard extends HTMLElement {
 
   connectedCallback() {
     this._resizeObserver = new ResizeObserver(() => {
-      this._dirty = true;
-      this._render();
+      // the dashboard reflows while it loads; only re-rasterise once the size has settled
+      clearTimeout(this._resizeTimer);
+      this._resizeTimer = setTimeout(() => {
+        this._dirty = true;
+        this._render();
+      }, 120);
     });
     this._intersectionObserver = new IntersectionObserver(([entry]) => {
       this._visible = entry.isIntersecting;
@@ -136,6 +166,7 @@ export class DotmatrixCard extends HTMLElement {
     this._intersectionObserver?.disconnect();
     document.removeEventListener("visibilitychange", this._onVisibilityChange);
     clearTimeout(this._timer);
+    clearTimeout(this._resizeTimer);
     this._timer = null;
     this._visible = false;
   }
@@ -208,7 +239,7 @@ export class DotmatrixCard extends HTMLElement {
   _geometry() {
     const width = this._root.clientWidth - 20; // board padding
     if (width <= 0) return null;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2); // dpr 3 phones: half the raster work, no visible difference
     const ideal = Number(this._config.columns) > 0 ? Number(this._config.columns) : this._idealColumns();
     let pitch = Math.min(MAX_PITCH, Math.max(MIN_PITCH, width / ideal));
     if (Number(this._config.columns) > 0) pitch = Math.max(0.5, width / ideal);
